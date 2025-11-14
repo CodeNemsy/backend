@@ -1,6 +1,84 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-</beans>
+<mapper namespace="kr.or.kosa.backend.user.mapper.UserMapper">
+
+    <!-- ========= Domain 매핑 ========= -->
+    <resultMap id="UserMap" type="kr.or.kosa.backend.user.domain.User">
+        <id property="id" column="id"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="name" column="name"/>
+        <result property="nickname" column="nickname"/> <!-- ★ 추가됨 -->
+        <result property="image" column="image"/>
+        <result property="grade" column="grade"/>
+        <result property="role" column="role"/>
+
+        <result property="githubToken" column="github_token"/>
+        <result property="refreshToken" column="refresh_token"/>
+        <result property="isDeleted" column="is_deleted"/>
+        <result property="deletedAt" column="deleted_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="enabled" column="enabled"/>
+    </resultMap>
+
+
+    <!-- ========= SELECT ========= -->
+
+    <select id="findByEmail" resultMap="UserMap">
+        SELECT * FROM users WHERE email = #{email}
+    </select>
+
+    <select id="findById" resultMap="UserMap">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+
+
+    <!-- ========= INSERT ========= -->
+
+    <insert id="insertUser" parameterType="kr.or.kosa.backend.user.domain.User">
+        INSERT INTO users (
+            email, password, name, nickname, image
+        ) VALUES (
+                     #{email}, #{password}, #{name}, #{nickname}, #{image}
+                 )
+    </insert>
+
+    <insert id="insertGithubUser" parameterType="kr.or.kosa.backend.user.domain.User">
+        INSERT INTO users (
+            email, name, nickname, image, github_token, role
+        ) VALUES (
+                     #{email}, #{name}, #{nickname}, #{image}, #{githubToken}, #{role}
+                 )
+    </insert>
+
+
+
+    <!-- ========= UPDATE ========= -->
+
+    <update id="updateUser" parameterType="kr.or.kosa.backend.user.domain.User">
+        UPDATE users
+        SET name = #{name},
+            nickname = #{nickname},
+            image = #{image}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateGithubToken" parameterType="kr.or.kosa.backend.user.domain.User">
+        UPDATE users
+        SET github_token = #{githubToken}
+        WHERE id = #{id}
+    </update>
+
+
+
+    <!-- ========= DELETE ========= -->
+
+    <delete id="deleteUser">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+</mapper>
