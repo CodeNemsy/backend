@@ -10,7 +10,7 @@
         <result property="email" column="email"/>
         <result property="password" column="password"/>
         <result property="name" column="name"/>
-        <result property="nickname" column="nickname"/> <!-- ★ 추가됨 -->
+        <result property="nickname" column="nickname"/>
         <result property="image" column="image"/>
         <result property="grade" column="grade"/>
         <result property="role" column="role"/>
@@ -39,7 +39,12 @@
 
     <!-- ========= INSERT ========= -->
 
-    <insert id="insertUser" parameterType="kr.or.kosa.backend.user.domain.User">
+    <!-- userId(PK) 자동 생성 -->
+    <insert id="insertUser"
+            parameterType="kr.or.kosa.backend.user.domain.User"
+            useGeneratedKeys="true"
+            keyProperty="id">
+
         INSERT INTO users (
             email, password, name, nickname, image
         ) VALUES (
@@ -70,6 +75,12 @@
     <update id="updateGithubToken" parameterType="kr.or.kosa.backend.user.domain.User">
         UPDATE users
         SET github_token = #{githubToken}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateUserImage">
+        UPDATE users
+        SET image = #{image}
         WHERE id = #{id}
     </update>
 

@@ -17,7 +17,7 @@ public class User {
     private String nickname;
 
     private String image;
-    private String grade;
+    private Integer grade;
     private String role;
 
     private String githubToken;

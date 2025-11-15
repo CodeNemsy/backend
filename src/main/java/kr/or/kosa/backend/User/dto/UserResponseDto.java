@@ -9,7 +9,7 @@ public class UserResponseDto {
     private String name;
     private String nickname;
     private String image;
-    private String grade;
+    private Integer grade;
     private String role;
     private Boolean enabled;
 }

@@ -29,6 +29,7 @@ public class UserController {
         dto.setName(name);
         dto.setNickname(nickname);
 
+        // Controller는 DTO + image만 Service로 넘기면 됨
         return userService.register(dto, image);
     }
 

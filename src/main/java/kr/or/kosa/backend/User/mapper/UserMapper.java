@@ -2,6 +2,7 @@ package kr.or.kosa.backend.user.mapper;
 
 import kr.or.kosa.backend.user.domain.User;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface UserMapper {
@@ -10,7 +11,7 @@ public interface UserMapper {
 
     User findById(Integer id);
 
-    int insertUser(User user);
+    void insertUser(User user);
 
     int insertGithubUser(User user);
 
@@ -19,4 +20,9 @@ public interface UserMapper {
     int updateGithubToken(User user);
 
     int deleteUser(Integer id);
+
+    void updateUserImage(
+            @Param("id") int id,
+            @Param("image") String image
+    );
 }
