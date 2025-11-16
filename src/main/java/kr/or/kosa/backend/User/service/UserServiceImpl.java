@@ -5,6 +5,7 @@ import kr.or.kosa.backend.user.dto.*;
 import kr.or.kosa.backend.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,6 +19,7 @@ import java.nio.file.Paths;
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${file.upload-dir}")
     private String uploadDir;  // 실제 서버 저장 경로 (/home/teamproject/coai/uploads/profile-images)
@@ -30,10 +32,23 @@ public class UserServiceImpl implements UserService {
             uploadDir = uploadDir + "/";
         }
 
+        // 🔥 이메일 중복 체크
+        if (userMapper.findByEmail(dto.getEmail()) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+
+        // 🔥 닉네임 중복 체크
+        if (userMapper.findByNickname(dto.getNickname()) != null) {
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+        }
+
         // 1) 기본 회원 정보 저장
         User user = new User();
         user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
+
+        // 🔥 비밀번호 암호화 적용
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+
         user.setName(dto.getName());
         user.setNickname(dto.getNickname());
         user.setImage(null);
@@ -49,20 +64,16 @@ public class UserServiceImpl implements UserService {
                 String safeNickname = dto.getNickname()
                         .replaceAll("[^a-zA-Z0-9가-힣_\\-]", "_");
 
-                // 실제 파일 저장 경로
                 String userFolder = uploadDir + safeNickname + "/profile/";
 
                 File folder = new File(userFolder);
                 if (!folder.exists()) folder.mkdirs();
 
-                // 고유 파일명
                 String fileName = System.currentTimeMillis() + "_" + imageFile.getOriginalFilename();
 
-                // 실제 저장
                 Path filePath = Paths.get(userFolder + fileName);
                 Files.copy(imageFile.getInputStream(), filePath);
 
-                // 웹에서 접근할 URL
                 imageUrl = "/profile-images/" + safeNickname + "/profile/" + fileName;
 
             } catch (Exception e) {
@@ -71,7 +82,7 @@ public class UserServiceImpl implements UserService {
             }
 
         } else {
-            // 3) 프로필 이미지 업로드 X → 기본 이미지 적용
+            // 3) 프로필 이미지 업로드 X
             imageUrl = "/profile-images/default.png";
         }
 

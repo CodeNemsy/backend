@@ -1,11 +1,18 @@
 package kr.or.kosa.backend.user.controller;
 
-import kr.or.kosa.backend.user.dto.*;
+import jakarta.validation.Valid;
+import kr.or.kosa.backend.user.dto.UserLoginRequestDto;
+import kr.or.kosa.backend.user.dto.UserRegisterRequestDto;
+import kr.or.kosa.backend.user.dto.UserResponseDto;
 import kr.or.kosa.backend.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -15,31 +22,49 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public int register(
-            @RequestParam("email") String email,
-            @RequestParam("password") String password,
-            @RequestParam("name") String name,
-            @RequestParam("nickname") String nickname,
+    public ResponseEntity<?> register(
+            @Valid @ModelAttribute UserRegisterRequestDto dto,
+            BindingResult bindingResult,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) {
 
-        UserRegisterRequestDto dto = new UserRegisterRequestDto();
-        dto.setEmail(email);
-        dto.setPassword(password);
-        dto.setName(name);
-        dto.setNickname(nickname);
+        // ❌ 유효성 검사 실패
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.badRequest().body(bindingResult.getFieldErrors());
+        }
 
-        // Controller는 DTO + image만 Service로 넘기면 됨
-        return userService.register(dto, image);
+        // ✔ 정상 회원가입
+        int userId = userService.register(dto, image);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "회원가입이 완료되었습니다.",
+                        "userId", userId
+                )
+        );
     }
 
     @PostMapping("/login")
-    public UserResponseDto login(@RequestBody UserLoginRequestDto dto) {
-        return userService.login(dto);
+    public ResponseEntity<?> login(@RequestBody UserLoginRequestDto dto) {
+
+        UserResponseDto user = userService.login(dto);
+
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "로그인 실패"));
+        }
+
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/{id}")
-    public UserResponseDto getUser(@PathVariable Integer id) {
-        return userService.getById(id);
+    public ResponseEntity<?> getUser(@PathVariable Integer id) {
+        UserResponseDto user = userService.getById(id);
+
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(user);
     }
 }

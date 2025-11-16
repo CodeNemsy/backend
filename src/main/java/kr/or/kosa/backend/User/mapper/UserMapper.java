@@ -9,6 +9,8 @@ public interface UserMapper {
 
     User findByEmail(String email);
 
+    User findByNickname(String nickname);
+
     User findById(Integer id);
 
     void insertUser(User user);
@@ -24,5 +26,10 @@ public interface UserMapper {
     void updateUserImage(
             @Param("id") int id,
             @Param("image") String image
+    );
+
+    void updateRefreshToken(
+            @Param("id") int id,
+            @Param("token") String token
     );
 }

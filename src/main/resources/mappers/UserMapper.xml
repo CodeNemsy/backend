@@ -27,8 +27,14 @@
 
     <!-- ========= SELECT ========= -->
 
+    <!-- 이메일 중복 체크 -->
     <select id="findByEmail" resultMap="UserMap">
         SELECT * FROM users WHERE email = #{email}
+    </select>
+
+    <!-- 닉네임 중복 체크 -->
+    <select id="findByNickname" resultMap="UserMap">
+        SELECT * FROM users WHERE nickname = #{nickname}
     </select>
 
     <select id="findById" resultMap="UserMap">
@@ -81,6 +87,13 @@
     <update id="updateUserImage">
         UPDATE users
         SET image = #{image}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 🔥 Refresh Token 저장 -->
+    <update id="updateRefreshToken">
+        UPDATE users
+        SET refresh_token = #{token}
         WHERE id = #{id}
     </update>
 
