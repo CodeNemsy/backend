@@ -14,7 +14,6 @@
         <result property="image" column="image"/>
         <result property="grade" column="grade"/>
         <result property="role" column="role"/>
-
         <result property="githubToken" column="github_token"/>
         <result property="refreshToken" column="refresh_token"/>
         <result property="isDeleted" column="is_deleted"/>
@@ -24,15 +23,11 @@
         <result property="enabled" column="enabled"/>
     </resultMap>
 
-
     <!-- ========= SELECT ========= -->
-
-    <!-- 이메일 중복 체크 -->
     <select id="findByEmail" resultMap="UserMap">
         SELECT * FROM users WHERE email = #{email}
     </select>
 
-    <!-- 닉네임 중복 체크 -->
     <select id="findByNickname" resultMap="UserMap">
         SELECT * FROM users WHERE nickname = #{nickname}
     </select>
@@ -41,16 +36,11 @@
         SELECT * FROM users WHERE id = #{id}
     </select>
 
-
-
     <!-- ========= INSERT ========= -->
-
-    <!-- userId(PK) 자동 생성 -->
     <insert id="insertUser"
             parameterType="kr.or.kosa.backend.user.domain.User"
             useGeneratedKeys="true"
             keyProperty="id">
-
         INSERT INTO users (
             email, password, name, nickname, image
         ) VALUES (
@@ -66,10 +56,7 @@
                  )
     </insert>
 
-
-
     <!-- ========= UPDATE ========= -->
-
     <update id="updateUser" parameterType="kr.or.kosa.backend.user.domain.User">
         UPDATE users
         SET name = #{name},
@@ -90,17 +77,13 @@
         WHERE id = #{id}
     </update>
 
-    <!-- 🔥 Refresh Token 저장 -->
     <update id="updateRefreshToken">
         UPDATE users
         SET refresh_token = #{token}
         WHERE id = #{id}
     </update>
 
-
-
     <!-- ========= DELETE ========= -->
-
     <delete id="deleteUser">
         DELETE FROM users WHERE id = #{id}
     </delete>

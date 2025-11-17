@@ -21,7 +21,7 @@ public class User {
     private String role;
 
     private String githubToken;
-    private String refreshToken;
+    private String refreshToken;  // JWT 사용 시 필요
 
     private Boolean isDeleted;
 
@@ -29,5 +29,5 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private Boolean enabled;
+    private Boolean enabled;      // 회원 활성화 여부 (항상 true)
 }

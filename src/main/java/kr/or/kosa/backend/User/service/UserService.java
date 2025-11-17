@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
-    int register(UserRegisterRequestDto dto, MultipartFile image);
+    int register(UserRegisterRequestDto dto, MultipartFile imageFile);
 
     UserResponseDto login(UserLoginRequestDto dto);
 

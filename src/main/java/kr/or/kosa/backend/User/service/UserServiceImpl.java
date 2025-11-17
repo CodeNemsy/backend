@@ -8,109 +8,150 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import kr.or.kosa.backend.exception.CustomException;
+import kr.or.kosa.backend.exception.ErrorCode;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.imageio.ImageIO;
+import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+//    private final EmailVerificationService emailVerificationService;
 
     @Value("${file.upload-dir}")
-    private String uploadDir;  // 실제 서버 저장 경로 (/home/teamproject/coai/uploads/profile-images)
+    private String uploadDir;
 
     @Override
     public int register(UserRegisterRequestDto dto, MultipartFile imageFile) {
 
-        // uploadDir 끝에 "/" 자동 추가
         if (!uploadDir.endsWith("/")) {
             uploadDir = uploadDir + "/";
         }
 
-        // 🔥 이메일 중복 체크
+        // 🔥 1) 이메일 인증 여부 확인 (여기가 핵심)
+//        if (!emailVerificationService.isVerified(dto.getEmail())) {
+//            throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
+//        }
+
+        // 🔥 2) 이메일 중복 체크
         if (userMapper.findByEmail(dto.getEmail()) != null) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new CustomException(ErrorCode.EMAIL_DUPLICATE);
         }
 
-        // 🔥 닉네임 중복 체크
+        // 🔥 3) 닉네임 중복 체크
         if (userMapper.findByNickname(dto.getNickname()) != null) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            throw new CustomException(ErrorCode.NICKNAME_DUPLICATE);
         }
 
-        // 1) 기본 회원 정보 저장
+        // 4) 유저 생성
         User user = new User();
         user.setEmail(dto.getEmail());
-
-        // 🔥 비밀번호 암호화 적용
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
-
         user.setName(dto.getName());
         user.setNickname(dto.getNickname());
         user.setImage(null);
+        user.setEnabled(true);  // ⭐ 회원가입 중 인증 완료이므로 true
 
         userMapper.insertUser(user);
         int userId = user.getId();
 
-        String imageUrl;
-
-        // 2) 프로필 이미지 업로드 O
-        if (imageFile != null && !imageFile.isEmpty()) {
-            try {
-                String safeNickname = dto.getNickname()
-                        .replaceAll("[^a-zA-Z0-9가-힣_\\-]", "_");
-
-                String userFolder = uploadDir + safeNickname + "/profile/";
-
-                File folder = new File(userFolder);
-                if (!folder.exists()) folder.mkdirs();
-
-                String fileName = System.currentTimeMillis() + "_" + imageFile.getOriginalFilename();
-
-                Path filePath = Paths.get(userFolder + fileName);
-                Files.copy(imageFile.getInputStream(), filePath);
-
-                imageUrl = "/profile-images/" + safeNickname + "/profile/" + fileName;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException("이미지 업로드 실패", e);
-            }
-
-        } else {
-            // 3) 프로필 이미지 업로드 X
-            imageUrl = "/profile-images/default.png";
-        }
-
-        // DB에 이미지 저장
+        // 5) 이미지 처리
+        String imageUrl = handleUserImageUpload(dto.getNickname(), imageFile);
         userMapper.updateUserImage(userId, imageUrl);
 
         return userId;
     }
 
+
+
+    private String handleUserImageUpload(String nickname, MultipartFile imageFile) {
+
+        if (imageFile == null || imageFile.isEmpty()) {
+            return "/profile-images/default.png";
+        }
+
+        if (imageFile.getSize() > 5 * 1024 * 1024) {
+            throw new CustomException(ErrorCode.INVALID_IMAGE_SIZE);
+        }
+
+        String contentType = imageFile.getContentType();
+        if (contentType == null ||
+                !(contentType.equals("image/jpeg") || contentType.equals("image/png"))) {
+            throw new CustomException(ErrorCode.INVALID_IMAGE_EXTENSION);
+        }
+
+        try {
+            if (ImageIO.read(imageFile.getInputStream()) == null) {
+                throw new CustomException(ErrorCode.INVALID_IMAGE_FILE);
+            }
+        } catch (IOException e) {
+            throw new CustomException(ErrorCode.INVALID_IMAGE_FILE);
+        }
+
+        String safeNickname = nickname.replaceAll("[^a-zA-Z0-9가-힣_\\-]", "_");
+        String userFolder = uploadDir + safeNickname + "/profile/";
+
+        File folder = new File(userFolder);
+        if (!folder.exists() && !folder.mkdirs()) {
+            throw new CustomException(ErrorCode.FILE_SAVE_ERROR);
+        }
+
+        String fileName = UUID.randomUUID().toString() + "_" + imageFile.getOriginalFilename();
+        Path filePath = Paths.get(userFolder + fileName);
+
+        try {
+            Files.copy(imageFile.getInputStream(), filePath);
+        } catch (IOException e) {
+            log.error("프로필 이미지 저장 실패", e);
+            throw new CustomException(ErrorCode.FILE_SAVE_ERROR);
+        }
+
+        return "/profile-images/" + safeNickname + "/profile/" + fileName;
+    }
+
+
+
     @Override
     public UserResponseDto login(UserLoginRequestDto dto) {
         User user = userMapper.findByEmail(dto.getEmail());
 
-        if (user == null || !user.getPassword().equals(dto.getPassword())) {
-            return null;
+        if (user == null) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
         return toResponseDto(user);
     }
 
+
+
     @Override
     public UserResponseDto getById(Integer id) {
         User user = userMapper.findById(id);
 
-        if (user == null) return null;
+        if (user == null) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
 
         return toResponseDto(user);
     }
+
+
 
     private UserResponseDto toResponseDto(User user) {
         UserResponseDto dto = new UserResponseDto();

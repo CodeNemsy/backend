@@ -28,18 +28,17 @@ public class UserController {
             @RequestPart(value = "image", required = false) MultipartFile image
     ) {
 
-        // ❌ 유효성 검사 실패
         if (bindingResult.hasErrors()) {
             return ResponseEntity.badRequest().body(bindingResult.getFieldErrors());
         }
 
-        // ✔ 정상 회원가입
+        // 회원가입 (이미 enabled = true 상태)
         int userId = userService.register(dto, image);
 
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "회원가입이 완료되었습니다.",
+                        "message", "회원가입이 성공적으로 완료되었습니다.",
                         "userId", userId
                 )
         );
@@ -47,24 +46,12 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserLoginRequestDto dto) {
-
         UserResponseDto user = userService.login(dto);
-
-        if (user == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "로그인 실패"));
-        }
-
         return ResponseEntity.ok(user);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getUser(@PathVariable Integer id) {
-        UserResponseDto user = userService.getById(id);
-
-        if (user == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userService.getById(id));
     }
 }
