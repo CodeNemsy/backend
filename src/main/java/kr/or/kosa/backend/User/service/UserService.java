@@ -1,5 +1,6 @@
 package kr.or.kosa.backend.user.service;
 
+import kr.or.kosa.backend.user.dto.UserLoginResponseDto;
 import kr.or.kosa.backend.user.dto.UserRegisterRequestDto;
 import kr.or.kosa.backend.user.dto.UserLoginRequestDto;
 import kr.or.kosa.backend.user.dto.UserResponseDto;
@@ -9,7 +10,11 @@ public interface UserService {
 
     int register(UserRegisterRequestDto dto, MultipartFile imageFile);
 
-    UserResponseDto login(UserLoginRequestDto dto);
+    UserLoginResponseDto login(UserLoginRequestDto dto);
+
+    String refresh(String bearerToken);
+
+    void logout(String bearerToken);
 
     UserResponseDto getById(Integer id);
 }

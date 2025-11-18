@@ -2,53 +2,70 @@ package kr.or.kosa.backend.user.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import java.util.Map;
+
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationServiceImpl implements EmailVerificationService {
 
-    // 이메일별 인증 코드 저장
-    private final Map<String, String> verificationCodes = new ConcurrentHashMap<>();
-
-    // 인증 완료 여부 저장
-    private final Map<String, Boolean> verifiedEmails = new ConcurrentHashMap<>();
-
+    private final StringRedisTemplate redisTemplate;
     private final EmailSender emailSender;
 
+    // 인증번호 존재시간 : 5분
+    private static final long EXPIRATION_SECONDS = 5 * 60;
+
     @Override
-    public void sendVerificationEmail(String email) {
+    public long sendVerificationEmail(String email) {
 
         String code = UUID.randomUUID().toString().substring(0, 6);
 
-        verificationCodes.put(email, code);
-        verifiedEmails.put(email, false);
+        // Redis key 생성
+        String key = "email:verify:" + email;
 
+        // 인증번호 저장 + TTL 5분
+        redisTemplate.opsForValue().set(key, code, EXPIRATION_SECONDS, TimeUnit.SECONDS);
+
+        // 이메일 전송
         String subject = "회원가입 이메일 인증코드";
-        String text = "인증 코드: " + code;
+        String text = "인증 코드: " + code + "\n5분 안에 입력해주세요.";
 
         emailSender.sendEmail(email, subject, text);
+
+        // 프론트가 만료까지 카운트다운 할 수 있게 expireAt 제공
+        return System.currentTimeMillis() + (EXPIRATION_SECONDS * 1000);
     }
 
     @Override
     public boolean verifyCode(String email, String requestCode) {
-        String savedCode = verificationCodes.get(email);
 
-        if (savedCode != null && savedCode.equals(requestCode)) {
-            verifiedEmails.put(email, true);
-            verificationCodes.remove(email);
-            return true;
+        String key = "email:verify:" + email;
+        String savedCode = redisTemplate.opsForValue().get(key);
+
+        // 존재하지 않음(없거나 TTL 만료)
+        if (savedCode == null) {
+            return false;
         }
 
-        return false;
+        // 코드 일치 여부 확인
+        if (!savedCode.equals(requestCode)) {
+            return false;
+        }
+
+        // 인증 완료 → Redis에서 제거
+        redisTemplate.delete(key);
+
+        return true;
     }
 
     @Override
     public boolean isVerified(String email) {
-        return verifiedEmails.getOrDefault(email, false);
+        // 인증 여부가 필요하다면 별도 저장 가능
+        // 현재는 verifyCode() 자체가 인증 여부 판단
+        return false;
     }
 }

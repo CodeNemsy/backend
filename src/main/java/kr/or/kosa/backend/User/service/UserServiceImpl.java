@@ -1,25 +1,29 @@
 package kr.or.kosa.backend.user.service;
 
+import kr.or.kosa.backend.exception.CustomException;
+import kr.or.kosa.backend.exception.ErrorCode;
+import kr.or.kosa.backend.security.jwt.JwtProvider;
 import kr.or.kosa.backend.user.domain.User;
 import kr.or.kosa.backend.user.dto.*;
 import kr.or.kosa.backend.user.mapper.UserMapper;
+
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import kr.or.kosa.backend.exception.CustomException;
-import kr.or.kosa.backend.exception.ErrorCode;
 
+import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import javax.imageio.ImageIO;
 import java.util.UUID;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -29,9 +33,13 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailVerificationService emailVerificationService;
+    private final JwtProvider jwtProvider;
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
+
+    private static final long REFRESH_TOKEN_EXPIRE_DAYS = 14;
 
     @Override
     public int register(UserRegisterRequestDto dto, MultipartFile imageFile) {
@@ -40,22 +48,18 @@ public class UserServiceImpl implements UserService {
             uploadDir = uploadDir + "/";
         }
 
-        // 🔥 1) 이메일 인증 여부 확인 (여기가 핵심)
         if (!emailVerificationService.isVerified(dto.getEmail())) {
             throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        // 🔥 2) 이메일 중복 체크
         if (userMapper.findByEmail(dto.getEmail()) != null) {
             throw new CustomException(ErrorCode.EMAIL_DUPLICATE);
         }
 
-        // 🔥 3) 닉네임 중복 체크
         if (userMapper.findByNickname(dto.getNickname()) != null) {
             throw new CustomException(ErrorCode.NICKNAME_DUPLICATE);
         }
 
-        // 4) 유저 생성
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -67,17 +71,13 @@ public class UserServiceImpl implements UserService {
         userMapper.insertUser(user);
         int userId = user.getId();
 
-        // 5) 이미지 처리
         String imageUrl = handleUserImageUpload(dto.getNickname(), imageFile);
         userMapper.updateUserImage(userId, imageUrl);
 
         return userId;
     }
 
-
-
     private String handleUserImageUpload(String nickname, MultipartFile imageFile) {
-
         if (imageFile == null || imageFile.isEmpty()) {
             return "/profile-images/default.png";
         }
@@ -121,10 +121,8 @@ public class UserServiceImpl implements UserService {
         return "/profile-images/" + safeNickname + "/profile/" + fileName;
     }
 
-
-
     @Override
-    public UserResponseDto login(UserLoginRequestDto dto) {
+    public UserLoginResponseDto login(UserLoginRequestDto dto) {
         User user = userMapper.findByEmail(dto.getEmail());
 
         if (user == null) {
@@ -135,10 +133,63 @@ public class UserServiceImpl implements UserService {
             throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
-        return toResponseDto(user);
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getEmail());
+
+        // 🔥 RefreshToken을 Redis에 저장 (DB 대신)
+        String refreshKey = "auth:refresh:" + user.getId();
+        redisTemplate.opsForValue().set(
+                refreshKey,
+                refreshToken,
+                REFRESH_TOKEN_EXPIRE_DAYS,
+                TimeUnit.DAYS
+        );
+
+        return UserLoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(toResponseDto(user))
+                .build();
     }
 
+    @Override
+    public String refresh(String bearerToken) {
+        String refreshToken = bearerToken.replace("Bearer ", "");
 
+        if (!jwtProvider.validateToken(refreshToken)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        Integer userId = jwtProvider.getUserId(refreshToken);
+
+        String refreshKey = "auth:refresh:" + userId;
+        String savedToken = redisTemplate.opsForValue().get(refreshKey);
+
+        if (savedToken == null || !savedToken.equals(refreshToken)) {
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
+        }
+
+        return jwtProvider.createAccessToken(userId, jwtProvider.getEmail(refreshToken));
+    }
+
+    @Override
+    public void logout(String bearerToken) {
+        String token = bearerToken.replace("Bearer ", "");
+
+        if (!jwtProvider.validateToken(token)) return;
+
+        Integer userId = jwtProvider.getUserId(token);
+
+        // 1) RefreshToken 삭제
+        redisTemplate.delete("auth:refresh:" + userId);
+
+        // 2) AccessToken 블랙리스트 처리
+        long expireAt = jwtProvider.getTokenRemainingTime(token); // 토큰 남은 시간(ms)
+        if (expireAt > 0) {
+            String blacklistKey = "auth:blacklist:" + token;
+            redisTemplate.opsForValue().set(blacklistKey, "logout", expireAt, TimeUnit.MILLISECONDS);
+        }
+    }
 
     @Override
     public UserResponseDto getById(Integer id) {
@@ -150,8 +201,6 @@ public class UserServiceImpl implements UserService {
 
         return toResponseDto(user);
     }
-
-
 
     private UserResponseDto toResponseDto(User user) {
         UserResponseDto dto = new UserResponseDto();
