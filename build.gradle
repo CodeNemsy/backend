@@ -25,26 +25,29 @@ repositories {
 }
 
 dependencies {
-    // --- Spring Boot 기본 웹 ---
+    // Spring Boot 기본 웹
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // --- MyBatis ---
+    // MyBatis
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
-    // --- Database (MySQL) ---
+    // Database (MySQL)
     runtimeOnly 'com.mysql:mysql-connector-j'
 
-    // --- Lombok ---
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // --- 개발 편의 ---
+    // 개발 편의
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-    // --- 이미지 저장소 ---
-    implementation 'com.cloudinary:cloudinary-http44:1.34.0'
+    // AWS SDK v2 — S3
+    implementation 'software.amazon.awssdk:s3:2.25.39'
 
-    // --- 테스트 ---
+    // 파일 업로드용 (스프링 기본 포함)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
