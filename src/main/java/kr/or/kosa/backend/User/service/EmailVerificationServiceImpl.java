@@ -24,11 +24,11 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
 
         String code = UUID.randomUUID().toString().substring(0, 6);
 
-        // Redis key 생성
-        String key = "email:verify:" + email;
+        // 인증 코드 key
+        String codeKey = "email:verify:" + email;
 
         // 인증번호 저장 + TTL 5분
-        redisTemplate.opsForValue().set(key, code, EXPIRATION_SECONDS, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(codeKey, code, EXPIRATION_SECONDS, TimeUnit.SECONDS);
 
         // 이메일 전송
         String subject = "회원가입 이메일 인증코드";
@@ -41,10 +41,10 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     }
 
     @Override
-    public boolean verifyCode(String email, String requestCode) {
+    public boolean verifyCodeAndUpdate(String email, String requestCode) {
 
-        String key = "email:verify:" + email;
-        String savedCode = redisTemplate.opsForValue().get(key);
+        String codeKey = "email:verify:" + email;
+        String savedCode = redisTemplate.opsForValue().get(codeKey);
 
         if (savedCode == null) {
             return false;
@@ -54,16 +54,22 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
             return false;
         }
 
-        // 인증 성공 → Redis에서 제거
-        redisTemplate.delete(key);
+        // 인증 성공 → 인증 완료 상태 저장
+        String verifiedKey = "email:verified:" + email;
+        redisTemplate.opsForValue().set(verifiedKey, "true", 1, TimeUnit.HOURS);
+
+        // 인증코드 제거 (이제 필요 없음)
+        redisTemplate.delete(codeKey);
 
         return true;
     }
 
     @Override
     public boolean isVerified(String email) {
-        // 현재 구조에서는 verifyCode() 자체가 인증 여부 판단
-        return false;
+        String key = "email:verified:" + email;
+        String verified = redisTemplate.opsForValue().get(key);
+
+        return verified != null && verified.equals("true");
     }
 
     @Override

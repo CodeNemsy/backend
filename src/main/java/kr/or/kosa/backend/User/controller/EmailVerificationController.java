@@ -31,7 +31,8 @@ public class EmailVerificationController {
             @RequestParam String email,
             @RequestParam String code
     ) {
-        boolean result = emailVerificationService.verifyCode(email, code);
+        boolean result = emailVerificationService.verifyCodeAndUpdate(email, code);
+
         return result ? "인증 성공" : "인증 실패";
     }
 }
