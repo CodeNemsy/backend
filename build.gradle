@@ -52,12 +52,25 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // --- 개발 편의 ---
+    // 개발 편의
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-    // --- 테스트 ---
+    // AWS SDK v2 — S3
+    implementation 'software.amazon.awssdk:s3:2.25.39'
+
+    // 파일 업로드용 (스프링 기본 포함)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // aop
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    // 로그백
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
+
+    // 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
 }
 
 tasks.named('test') {
