@@ -6,7 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("kr.or.kosa.backend")
+//@MapperScan("kr.or.kosa.backend")
 public class BackendApplication {
     public static void main(String[] args) {
 
