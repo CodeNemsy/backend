@@ -40,6 +40,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/codeexception",
                                 "/users/login",
                                 "/users/register",
                                 "/users/refresh",
