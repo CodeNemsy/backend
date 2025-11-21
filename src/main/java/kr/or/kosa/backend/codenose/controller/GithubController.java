@@ -17,8 +17,9 @@ public class GithubController {
 
     private final GithubService githubService;
 
-    @GetMapping("/repos/{owner}")
-    public ResponseEntity<List<GithubRepositoryDTO>> getRepositories(@PathVariable String owner) {
+    @GetMapping("/repos")
+    public ResponseEntity<List<GithubRepositoryDTO>> getRepositories(
+            @RequestParam String owner) {  // 또는 owner로 이름 맞추기
         List<GithubRepositoryDTO> repositories = githubService.listRepositories(owner);
         return ResponseEntity.ok(repositories);
     }
