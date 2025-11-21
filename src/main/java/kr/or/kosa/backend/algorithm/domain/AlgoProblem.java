@@ -6,7 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 알고리즘 문제 엔티티
@@ -74,10 +77,10 @@ public class AlgoProblem {
     private LocalDateTime algoUpdatedAt;
 
     /**
-     * 문제 태그 배열 (JSON 형태로 저장)
-     * 예: ["DP", "그래프", "BFS"]
+     * 문제 태그 (간단히 쉼표로 구분된 문자열로 저장)
+     * 예: "DP,그래프,BFS"
      */
-    private List<String> algoProblemTags;
+    private String algoProblemTags;
 
     /**
      * 문제 활성화 상태 (1: 활성, 0: 비활성)
@@ -129,13 +132,28 @@ public class AlgoProblem {
     }
 
     /**
-     * 태그를 문자열로 변환 (UI 표시용)
+     * 태그를 배열로 변환 (쉼표 구분 문자열 → 리스트)
      */
-    public String getTagsAsString() {
-        if (algoProblemTags == null || algoProblemTags.isEmpty()) {
-            return "";
+    public List<String> getTagsAsList() {
+        if (algoProblemTags == null || algoProblemTags.trim().isEmpty()) {
+            return new ArrayList<>();
         }
-        return String.join(", ", algoProblemTags);
+        return Arrays.asList(algoProblemTags.split(","))
+                .stream()
+                .map(String::trim)
+                .filter(tag -> !tag.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 태그 리스트를 문자열로 설정 (리스트 → 쉼표 구분 문자열)
+     */
+    public void setTagsFromList(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            this.algoProblemTags = "";
+        } else {
+            this.algoProblemTags = String.join(",", tags);
+        }
     }
 
     /**
