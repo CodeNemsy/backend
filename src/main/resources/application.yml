@@ -1,0 +1,61 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/codeai?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: {MAIL_USERNAME}
+    password: {MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 6000
+
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+mybatis:
+  mapper-locations: classpath:/mapper/**/*.xml
+  type-aliases-package: kr.or.kosa.backend
+  configuration:
+    map-underscore-to-camel-case: true
+
+file:
+  upload-dir: /home/teamproject/coai/uploads/profile-images
+
+jwt:
+  secret: ${JWT_SECRET}
+
+
+server:
+  port: 8090
+
+
+
+toss:
+  payments:
+    key: ${TOSS_KEY}
+
+cloud:
+  aws:
+    credentials:
+      accessKey: ${AWS_ACCESS_KEY_ID}
+      secretKey: ${AWS_SECRET_ACCESS_KEY}
+    region:
+      static: ${AWS_REGION}
+    s3:
+      bucket: codenemsy
+      folder: images
