@@ -28,5 +28,7 @@ public class AnalysisRequestDTO {
     // 이전 단계에서 필요한 필드들
     private String repositoryUrl;           // GitHub 레포지토리 URL
     private String filePath;                // 분석할 파일 경로
+    private String fileContent;
+    private String analysisId;
     private Long userId;                    // 사용자 ID (인증된 사용자 컨텍스트에서 가져옴)
 }
