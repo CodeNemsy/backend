@@ -58,14 +58,15 @@ public class GithubController {
     @PostMapping("/save-file")
     public ResponseEntity<ApiResponse<Map<String, String>>> saveFileContent(
             @RequestBody FileSaveRequestDTO request) {
-        // TODO: 실제로는 SecurityContext에서 userId를 가져와야 함
-        // Long userId = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
-        // request.setUserId(userId);
 
-        String analysisId = githubService.saveFileContentToDB(request);
+        Long userId = 1L; // TODO: SecurityContext에서 가져오기
+        request.setUserId(userId);
+
+        String fileId = githubService.saveFileContentToDB(request);
+
         return ResponseEntity.ok(
                 ApiResponse.success(Map.of(
-                        "analysisId", analysisId,
+                        "fileId", fileId,  // analysisId -> fileId로 변경
                         "message", "파일 내용이 성공적으로 저장되었습니다."
                 ))
         );

@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -143,28 +144,35 @@ public class GithubService {
     /**
      * GitHub 파일 내용을 가져와서 DB에 저장
      * @param request 파일 저장 요청 DTO
-     * @return 저장된 파일 데이터의 analysisId
+     * @return 저장된 파일 데이터의 fileId
      */
     public String saveFileContentToDB(FileSaveRequestDTO request) {
         try {
             // 1. GitHub API로 파일 내용 가져오기
-            GithubFileDTO fileContent = getFileContent(request.getOwner(), request.getRepo(), request.getFilePath());
+            GithubFileDTO fileData = getFileContent(
+                    request.getOwner(),
+                    request.getRepo(),
+                    request.getFilePath()
+            );
 
-            // 2. DB 저장용 DTO 생성
-            CodeResultDTO fileData = new CodeResultDTO();
-            fileData.setAnalysisId(UUID.randomUUID().toString());
+            // 2. DB 저장용 필드 설정
+            fileData.setFileId(UUID.randomUUID().toString());
             fileData.setUserId(request.getUserId());
             fileData.setRepositoryUrl(request.getRepositoryUrl());
-            fileData.setFilePath(request.getFilePath());
-            fileData.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+            fileData.setOwner(request.getOwner());
+            fileData.setRepo(request.getRepo());
+            fileData.setCreatedAt(LocalDateTime.now());
+            fileData.setUpdatedAt(LocalDateTime.now());
 
             // 3. DB에 저장
             analysisMapper.saveFileContent(fileData);
 
-            log.info("파일 내용 저장 완료 - analysisId: {}, repositoryUrl: {}, filePath: {}",
-                    fileData.getAnalysisId(), request.getRepositoryUrl(), request.getFilePath());
+            log.info("파일 내용 저장 완료 - fileId: {}, filePath: {}, contentSize: {}",
+                    fileData.getFileId(),
+                    fileData.getFilePath(),
+                    fileData.getFileContent().length());
 
-            return fileData.getAnalysisId();
+            return fileData.getFileId();
 
         } catch (Exception e) {
             log.error("파일 저장 실패: {}", e.getMessage(), e);

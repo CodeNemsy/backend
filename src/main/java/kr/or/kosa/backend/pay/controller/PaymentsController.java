@@ -24,58 +24,97 @@ public class PaymentsController {
 
     /**
      * 1. 결제 위젯을 띄우기 전에 초기 결제 정보를 DB에 저장 (READY 상태)
+     *
+     * 프론트에서 넘어오는 JSON 예시:
+     * {
+     *   "orderId": "sub_...",
+     *   "userId": "USER_001",
+     *   "planCode": "BASIC",
+     *   "orderName": "Basic 구독 1개월",
+     *   "customerName": "홍길동",
+     *   "originalAmount": 39800,
+     *   "usedPoint": 5000,
+     *   "amount": 34800
+     * }
      */
     @PostMapping("/ready")
-    public ResponseEntity<Object> createPaymentReady(@RequestBody Payments payments) { // **[수정]** ResponseEntity<Object>로 변경
-        // ⭐ Ready 요청 처리 메서드에 try-catch 블록을 추가합니다.
-        try {
-            System.out.println("### [Ready] 요청 시작. OrderId: " + payments.getOrderId());
+    public ResponseEntity<Object> createPaymentReady(@RequestBody Payments payments) {
 
-            // 기존 서비스 호출 로직
+        try {
+            System.out.println("### [Ready] 요청 시작");
+            System.out.println(" - orderId          : " + payments.getOrderId());
+            System.out.println(" - userId           : " + payments.getUserId());
+            System.out.println(" - planCode         : " + payments.getPlanCode());
+            System.out.println(" - originalAmount   : " + payments.getOriginalAmount());
+            System.out.println(" - usedPoint        : " + payments.getUsedPoint());
+            System.out.println(" - final amount     : " + payments.getAmount());
+
             Payments readyPayment = paymentsService.savePayment(payments);
 
             System.out.println("### [Ready] DB 저장 성공.");
             return ResponseEntity.status(HttpStatus.CREATED).body(readyPayment);
 
+        } catch (IllegalArgumentException e) {
+            // 포인트 부족, 잘못된 사용량 등 비즈니스 검증 실패
+            System.err.println("### [Ready] 요청 검증 실패: " + e.getMessage());
+
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("code", "PAYMENT_READY_VALIDATION_ERROR");
+            errorResponse.put("message", e.getMessage());
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(errorResponse);
+
         } catch (Exception e) {
-            // ⭐ ⭐ ⭐ 예외를 강제로 출력하여 로그에 찍히게 합니다. ⭐ ⭐ ⭐
             e.printStackTrace();
             System.err.println("### [Ready] 요청 처리 중 심각한 오류 발생: " + e.getMessage());
 
-            // 프론트엔드에서 실패 응답을 처리할 수 있도록 500 응답 반환
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("code", "DB_SAVE_ERROR");
             errorResponse.put("message", "결제 준비 중 서버 내부 오류 (DB 저장 실패).");
 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(errorResponse); // **[수정]** 오류 응답 본문 반환
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse);
         }
     }
 
     /**
      * 2. 결제 성공 후 프론트엔드에서 최종 승인을 요청하는 엔드포인트
+     *    - Toss 예제처럼 JSON body 로 { paymentKey, orderId, amount } 받음
      */
     @PostMapping("/confirm")
-    public ResponseEntity<Object> confirmPayment(
-            @RequestParam String paymentKey,
-            @RequestParam String orderId,
-            @RequestParam Long amount) {
+    public ResponseEntity<Object> confirmPayment(@RequestBody Map<String, Object> request) {
         try {
-            // Service의 핵심 로직 호출
-            Payments confirmedPayment = paymentsService.confirmAndSavePayment(paymentKey, orderId, amount);
+            String paymentKey = (String) request.get("paymentKey");
+            String orderId = (String) request.get("orderId");
 
-            // 성공 응답: 결제 정보와 200 OK 반환
+            if (paymentKey == null || orderId == null) {
+                throw new IllegalArgumentException("paymentKey와 orderId는 필수값입니다.");
+            }
+
+            Object amountObj = request.get("amount");
+            Long amount;
+            if (amountObj instanceof Number) {
+                amount = ((Number) amountObj).longValue();
+            } else if (amountObj instanceof String) {
+                amount = Long.valueOf((String) amountObj);
+            } else {
+                throw new IllegalArgumentException("amount 값이 올바르지 않습니다.");
+            }
+
+            Payments confirmedPayment =
+                    paymentsService.confirmAndSavePayment(paymentKey, orderId, amount);
             return ResponseEntity.ok(confirmedPayment);
 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            // 비즈니스 로직 오류 (400 Bad Request): 토스 승인 거부, 이미 완료된 결제, 잘못된 orderId 등
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("code", "PAYMENT_BUSINESS_ERROR");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
 
         } catch (RuntimeException e) {
-            // 서버 내부 오류 (500 Internal Server Error): DB 오류, 통신 오류 등
             e.printStackTrace();
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("code", "INTERNAL_SERVER_ERROR");
@@ -98,30 +137,32 @@ public class PaymentsController {
             return ResponseEntity.ok(subscriptions);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
         }
     }
 
+    /**
+     * 4. 결제 취소(환불)
+     *    예) POST /payments/cancel?paymentKey=xxx&cancelReason=테스트취소
+     */
     @PostMapping("/cancel")
     public ResponseEntity<Object> cancelPayment(
             @RequestParam String paymentKey,
-            @RequestParam(required = true) String cancelReason) {
+            @RequestParam String cancelReason) {
 
         try {
             Payments canceledPayment = paymentsService.cancelPayment(paymentKey, cancelReason);
-
-            // 200 OK와 취소된 결제 정보를 반환
             return ResponseEntity.ok(canceledPayment);
 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            // 비즈니스 로직 오류 (예: 이미 취소됨, 유효하지 않은 키)
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("code", "CANCEL_BUSINESS_ERROR");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
 
         } catch (RuntimeException e) {
-            // 서버 내부 오류 (500)
             e.printStackTrace();
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("code", "INTERNAL_SERVER_ERROR");

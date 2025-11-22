@@ -20,6 +20,6 @@ public interface PaymentsService {
     // 사용자의 활성화된 구독 목록 조회
     List<Subscription> getActiveSubscriptions(String userId);
 
-    // **[추가]** 결제 취소 및 환불 처리
+    // 4. 결제 취소 및 환불 처리
     Payments cancelPayment(String paymentKey, String cancelReason);
 }

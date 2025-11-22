@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
         "kr.or.kosa.backend.algorithm.mapper",
         "kr.or.kosa.backend.codenose.mapper"
 })
+//@MapperScan("kr.or.kosa.backend")
 public class BackendApplication {
     public static void main(String[] args) {
 
