@@ -187,11 +187,41 @@ public class AIProblemGeneratorService {
                         ? request.getTimeLimit()
                         : getDefaultTimeLimit(request.getDifficulty()))
                 .memorylimit(request.getMemoryLimit())
-                .algoProblemTags(request.getTopic())
+                .algoProblemTags(buildTagsJson(request.getTopic()))
                 .algoProblemStatus(true)
                 .algoCreatedAt(LocalDateTime.now())
                 .algoUpdatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * 태그를 JSON 배열 형식으로 변환
+     */
+    private String buildTagsJson(String topic) {
+        if (topic == null || topic.trim().isEmpty()) {
+            return "[]"; // 빈 JSON 배열
+        }
+
+        try {
+            // 쉼표로 구분된 태그를 JSON 배열로 변환
+            String[] tags = topic.split(",");
+            List<String> tagList = new ArrayList<>();
+
+            for (String tag : tags) {
+                String trimmed = tag.trim();
+                if (!trimmed.isEmpty()) {
+                    tagList.add(trimmed);
+                }
+            }
+
+            // ObjectMapper로 JSON 배열 생성
+            return objectMapper.writeValueAsString(tagList);
+
+        } catch (Exception e) {
+            log.error("태그 JSON 변환 실패, 기본값 사용: {}", topic, e);
+            // 실패 시 단일 태그로 JSON 배열 생성
+            return "[\"" + topic.replace("\"", "\\\"") + "\"]";
+        }
     }
 
     /**
