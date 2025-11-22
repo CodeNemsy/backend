@@ -3,47 +3,71 @@ package kr.or.kosa.backend.codenose.dto.dtoReal;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 /**
  * GitHub 파일 DTO
- * GitHub API 요청/응답 데이터 전송용 (데이터베이스 테이블 매핑 없음)
- *
- * GitHub API를 통해 파일 내용을 요청하고 응답받을 때 사용하는 DTO
- * - Request: owner, repo, path로 파일 요청
- * - Response: 파일 메타데이터 및 Base64 디코딩된 내용 반환
+ * GitHub API 요청/응답 및 DB 저장용
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class GithubFileDTO {
-    // === Request 필드 ===
-    private String owner;                   // 레포지토리 소유자
-    private String repo;                    // 레포지토리 이름
+    // === DB 컬럼 매핑 ===
+    private String fileId;              // FILE_ID (PK) - UUID
+    private Long userId;                // USER_ID
+    private String repositoryUrl;       // REPOSITORY_URL
+    private String owner;               // OWNER
+    private String repo;                // REPO
+    private String filePath;            // FILE_PATH
+    private String fileName;            // FILE_NAME (원래 name)
+    private String fileContent;         // FILE_CONTENT (원래 content)
+    private Integer fileSize;           // FILE_SIZE (원래 size)
+    private String encoding;            // ENCODING
+    private LocalDateTime createdAt;    // CREATED_AT
+    private LocalDateTime updatedAt;    // UPDATED_AT
 
-    // === Response 필드 ===
-    private String name;                    // 파일명
-    private String path;                    // 파일 경로
-    private String content;                 // 파일 내용 (Base64 디코딩됨)
-    private String encoding;                // 인코딩 방식 (예: base64)
-    private int size;                       // 파일 크기 (bytes)
+    // === GitHub API Response용 별칭 getter/setter ===
+    public String getName() {
+        return fileName;
+    }
 
-    /**
-     * Request용 생성자
-     */
-    public GithubFileDTO(String owner, String repo, String path) {
-        this.owner = owner;
-        this.repo = repo;
-        this.path = path;
+    public void setName(String name) {
+        this.fileName = name;
+    }
+
+    public String getPath() {
+        return filePath;
+    }
+
+    public void setPath(String path) {
+        this.filePath = path;
+    }
+
+    public String getContent() {
+        return fileContent;
+    }
+
+    public void setContent(String content) {
+        this.fileContent = content;
+    }
+
+    public int getSize() {
+        return fileSize != null ? fileSize : 0;
+    }
+
+    public void setSize(int size) {
+        this.fileSize = size;
     }
 
     /**
-     * Response용 생성자
+     * GitHub API Response용 생성자
      */
     public GithubFileDTO(String name, String path, String content, String encoding, int size) {
-        this.name = name;
-        this.path = path;
-        this.content = content;
+        this.fileName = name;
+        this.filePath = path;
+        this.fileContent = content;
         this.encoding = encoding;
-        this.size = size;
+        this.fileSize = size;
     }
 }
