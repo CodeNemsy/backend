@@ -1,6 +1,5 @@
 package kr.or.kosa.backend.user.service;
 
-
 import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
 import kr.or.kosa.backend.infra.s3.S3Uploader;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
@@ -8,6 +7,7 @@ import kr.or.kosa.backend.user.domain.User;
 import kr.or.kosa.backend.user.dto.*;
 import kr.or.kosa.backend.user.exception.UserErrorCode;
 import kr.or.kosa.backend.user.mapper.UserMapper;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,15 +34,17 @@ public class UserServiceImpl implements UserService {
 
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 14;
 
+    // ⭐ 중복 문자열 상수화 (Magic String 제거)
+    private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
+    private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
+
     @Override
     public int register(UserRegisterRequestDto dto, MultipartFile imageFile) {
 
-        // 1. 이메일 인증 확인
         if (!emailVerificationService.isVerified(dto.getEmail())) {
             throw new CustomBusinessException(UserErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        // 2. 중복 체크
         if (userMapper.findByEmail(dto.getEmail()) != null) {
             throw new CustomBusinessException(UserErrorCode.EMAIL_DUPLICATE);
         }
@@ -51,7 +53,6 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.NICKNAME_DUPLICATE);
         }
 
-        // 3. User 저장 (이미지 제외)
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
@@ -63,24 +64,19 @@ public class UserServiceImpl implements UserService {
         userMapper.insertUser(user);
         int userId = user.getId();
 
-        // 4. 프로필 이미지 S3 업로드
         String imageUrl;
 
         if (imageFile != null && !imageFile.isEmpty()) {
-
             String folderPath = "profile-images/" + dto.getNickname() + "/profile";
-
             try {
                 imageUrl = s3Uploader.upload(imageFile, folderPath);
             } catch (IOException e) {
                 throw new CustomBusinessException(UserErrorCode.FILE_SAVE_ERROR);
             }
-
         } else {
             imageUrl = "https://codenemsy.s3.ap-northeast-2.amazonaws.com/profile-images/default.png";
         }
 
-        // 5. DB에 이미지 URL 저장
         userMapper.updateUserImage(userId, imageUrl);
 
         return userId;
@@ -90,7 +86,6 @@ public class UserServiceImpl implements UserService {
     public UserLoginResponseDto login(UserLoginRequestDto dto) {
 
         User user = userMapper.findByEmail(dto.getEmail());
-
         if (user == null) {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
@@ -99,35 +94,28 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.INVALID_PASSWORD);
         }
 
-        // 🔥 Base64 변환 제거 → S3 URL 그대로 사용
-        String profileImageUrl = user.getImage();
-
-        // 🔑 토큰 생성
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
         String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getEmail());
 
-        // 💾 Redis에 RefreshToken 저장
-        String refreshKey = "auth:refresh:" + user.getId();
+        // ⭐ 상수 사용
         redisTemplate.opsForValue().set(
-                refreshKey,
+                REFRESH_KEY_PREFIX + user.getId(),
                 refreshToken,
                 REFRESH_TOKEN_EXPIRE_DAYS,
                 TimeUnit.DAYS
         );
 
-        // 🎯 User DTO 생성
         UserResponseDto userDto = UserResponseDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .nickname(user.getNickname())
-                .image(profileImageUrl)
+                .image(user.getImage())
                 .grade(user.getGrade())
                 .role(user.getRole())
                 .enabled(user.getEnabled())
                 .build();
 
-        // 🎯 응답 반환
         return UserLoginResponseDto.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -145,8 +133,8 @@ public class UserServiceImpl implements UserService {
 
         Integer userId = jwtProvider.getUserId(refreshToken);
 
-        String refreshKey = "auth:refresh:" + userId;
-        String savedToken = redisTemplate.opsForValue().get(refreshKey);
+        // ⭐ 상수 사용
+        String savedToken = redisTemplate.opsForValue().get(REFRESH_KEY_PREFIX + userId);
 
         if (savedToken == null || !savedToken.equals(refreshToken)) {
             throw new CustomBusinessException(UserErrorCode.INVALID_TOKEN);
@@ -163,14 +151,19 @@ public class UserServiceImpl implements UserService {
 
         Integer userId = jwtProvider.getUserId(token);
 
-        // 1) RefreshToken 삭제
-        redisTemplate.delete("auth:refresh:" + userId);
+        // ⭐ 상수 사용
+        redisTemplate.delete(REFRESH_KEY_PREFIX + userId);
 
-        // 2) AccessToken 블랙리스트 처리
-        long expireAt = jwtProvider.getTokenRemainingTime(token); // 토큰 남은 시간(ms)
+        long expireAt = jwtProvider.getTokenRemainingTime(token);
         if (expireAt > 0) {
-            String blacklistKey = "auth:blacklist:" + token;
-            redisTemplate.opsForValue().set(blacklistKey, "logout", expireAt, TimeUnit.MILLISECONDS);
+
+            // ⭐ 상수 사용
+            redisTemplate.opsForValue().set(
+                    BLACKLIST_KEY_PREFIX + token,
+                    "logout",
+                    expireAt,
+                    TimeUnit.MILLISECONDS
+            );
         }
     }
 
@@ -182,16 +175,12 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        return toResponseDto(user);
-    }
-
-    public UserResponseDto toResponseDto(User user) {
         return UserResponseDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .nickname(user.getNickname())
-                .image(user.getImage())   // 원본 경로 그대로 사용
+                .image(user.getImage())
                 .grade(user.getGrade())
                 .role(user.getRole())
                 .enabled(user.getEnabled())
@@ -206,45 +195,37 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 비밀번호 재설정 토큰 생성 (UUID)
-        String token = UUID.randomUUID().toString();
+        String tempPassword = UUID.randomUUID().toString()
+                .replace("-", "")
+                .substring(0, 10);
 
-        String redisKey = "reset:token:" + token;
-        redisTemplate.opsForValue().set(redisKey, email, 30, TimeUnit.MINUTES);
+        userMapper.updatePassword(
+                user.getId(),
+                passwordEncoder.encode(tempPassword)
+        );
 
-        // 프론트엔드의 비밀번호 재설정 페이지 URL
-        String resetLink = "https://your-frontend.com/reset-password?token=" + token;
-
-        // 이메일 보내기
         emailVerificationService.send(
                 email,
-                "[서비스명] 비밀번호 재설정",
-                "아래 링크를 클릭하여 비밀번호를 재설정하세요.\n" +
-                        resetLink + "\n" +
-                        "링크는 30분 동안만 유효합니다."
+                "[서비스명] 임시 비밀번호 안내",
+                "임시 비밀번호는 아래와 같습니다.\n\n" +
+                        tempPassword + "\n\n" +
+                        "로그인 후 반드시 비밀번호를 변경해주세요."
         );
     }
 
     @Override
-    public void resetPassword(PasswordResetConfirmDto dto) {
+    public void updatePassword(Integer userId, PasswordUpdateRequestDto dto) {
 
-        String redisKey = "reset:token:" + dto.getToken();
-        String email = redisTemplate.opsForValue().get(redisKey);
-
-        if (email == null) {
-            throw new CustomBusinessException(UserErrorCode.INVALID_OR_EXPIRED_TOKEN);
-        }
-
-        User user = userMapper.findByEmail(email);
+        User user = userMapper.findById(userId);
         if (user == null) {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 비밀번호 암호화 후 저장
-        String encPassword = passwordEncoder.encode(dto.getNewPassword());
-        userMapper.updatePassword(user.getId(), encPassword);
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
+            throw new CustomBusinessException(UserErrorCode.INVALID_PASSWORD);
+        }
 
-        // 토큰 삭제
-        redisTemplate.delete(redisKey);
+        String encryptedNewPassword = passwordEncoder.encode(dto.getNewPassword());
+        userMapper.updatePassword(userId, encryptedNewPassword);
     }
 }

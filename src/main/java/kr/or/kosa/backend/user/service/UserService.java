@@ -17,6 +17,5 @@ public interface UserService {
 
     void sendPasswordResetLink(String email);
 
-    void resetPassword(PasswordResetConfirmDto dto);
+    void updatePassword(Integer userId, PasswordUpdateRequestDto dto);
 }
-
