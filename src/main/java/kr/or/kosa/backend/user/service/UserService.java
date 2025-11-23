@@ -13,8 +13,6 @@ public interface UserService {
 
     void logout(String token);
 
-    UserResponseDto getById(Integer id);
-
     void sendPasswordResetLink(String email);
 
     void updatePassword(Integer userId, PasswordUpdateRequestDto dto);

@@ -71,14 +71,6 @@ public class UserController {
     }
 
     /**
-     * 회원 상세 조회
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDto> getUser(@PathVariable Integer id) {
-        return ResponseEntity.ok(userService.getById(id));
-    }
-
-    /**
      * 임시 비밀번호 발급
      */
     @PostMapping("/password/reset/request")

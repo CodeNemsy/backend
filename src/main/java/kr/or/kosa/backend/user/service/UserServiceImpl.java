@@ -168,26 +168,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponseDto getById(Integer id) {
-        User user = userMapper.findById(id);
-
-        if (user == null) {
-            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
-        }
-
-        return UserResponseDto.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .nickname(user.getNickname())
-                .image(user.getImage())
-                .grade(user.getGrade())
-                .role(user.getRole())
-                .enabled(user.getEnabled())
-                .build();
-    }
-
-    @Override
     public void sendPasswordResetLink(String email) {
 
         User user = userMapper.findByEmail(email);
