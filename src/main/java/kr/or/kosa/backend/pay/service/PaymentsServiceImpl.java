@@ -12,9 +12,11 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -48,11 +50,24 @@ public class PaymentsServiceImpl implements PaymentsService {
      * - 여기서 status, requestedAt 기본값 세팅
      * - originalAmount / usedPoint / amount 조합 검증
      * - 포인트 잔액 사전 검증까지 수행
+     * - ★ 최근 2회 연속 환불 계정은 1개월 동안 결제 차단
      */
     @Override
     public Payments savePayment(Payments payments) {
 
-        // 0) 기본 상태값
+        // 0-0) userId 필수
+        String userId = payments.getUserId();
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("결제를 진행하려면 userId가 필요합니다.");
+        }
+
+        // 0-1) 최근 2회 연속 환불 + 30일 이내 → 결제 차단
+        if (isUserInRefundBan(userId)) {
+            throw new IllegalArgumentException(
+                    "최근 2회 연속 환불로 인해 1개월 동안 결제가 제한된 계정입니다.");
+        }
+
+        // 0-2) 기본 상태값
         payments.setStatus("READY");
         payments.setRequestedAt(LocalDateTime.now().toString());
 
@@ -98,12 +113,7 @@ public class PaymentsServiceImpl implements PaymentsService {
 
         // 4) 포인트 잔액 사전 검증
         if (usedPoint > 0) {
-            String userId = payments.getUserId();
-            if (userId == null || userId.isBlank()) {
-                throw new IllegalArgumentException("포인트를 사용하려면 userId가 필요합니다.");
-            }
-
-            // 여기서는 실제 차감은 하지 않고, "충분한지"만 확인
+            // 위에서 userId null/blank 체크 이미 했음
             pointService.validatePointBalance(userId, usedPoint);
         }
 
@@ -113,7 +123,7 @@ public class PaymentsServiceImpl implements PaymentsService {
     }
 
     @Override
-    public java.util.Optional<Payments> getPaymentByOrderId(String orderId) {
+    public Optional<Payments> getPaymentByOrderId(String orderId) {
         return paymentsMapper.findPaymentByOrderId(orderId);
     }
 
@@ -239,16 +249,32 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     /**
      * 토스페이먼츠 환불/취소 처리
+     *  - 결제 후 7일 이내만 환불 가능
+     *  - 이미 CANCELED / DONE 이외 상태는 환불 불가
      */
     @Override
     @Transactional
     public Payments cancelPayment(String paymentKey, String cancelReason) {
 
         Payments paymentToCancel = paymentsMapper.findPaymentByPaymentKey(paymentKey)
-                .orElseThrow(() -> new IllegalArgumentException("취소할 결제 정보를 찾을 수 없습니다."));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("취소할 결제 정보를 찾을 수 없습니다."));
 
+        // 이미 취소된 건은 비즈니스 에러로 처리
         if ("CANCELED".equals(paymentToCancel.getStatus())) {
-            return paymentToCancel;
+            throw new IllegalStateException("이미 취소된 결제입니다.");
+        }
+
+        // 결제 완료 상태(DONE)만 취소 허용
+        if (!"DONE".equals(paymentToCancel.getStatus())) {
+            throw new IllegalStateException(
+                    "결제 완료 상태에서만 환불할 수 있습니다. (현재 상태: " + paymentToCancel.getStatus() + ")");
+        }
+
+        // ★ 7일 이내 결제만 환불 허용
+        LocalDateTime requestedAt = parseDateTime(paymentToCancel.getRequestedAt());
+        if (requestedAt != null && requestedAt.isBefore(LocalDateTime.now().minusDays(7))) {
+            throw new IllegalArgumentException("결제 후 7일이 지난 건은 환불할 수 없습니다.");
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -267,7 +293,9 @@ public class PaymentsServiceImpl implements PaymentsService {
             if (response.getStatusCode() == HttpStatus.OK) {
                 String newStatus = (String) response.getBody().get("status"); // CANCELED or PARTIAL_CANCELED
 
+                // 결제 상태/취소일 업데이트
                 paymentsMapper.updatePaymentStatusToCanceled(paymentToCancel.getOrderId(), newStatus);
+                // 구독 상태도 CANCELED 처리
                 subscriptionMapper.updateSubscriptionStatusToCanceled(paymentToCancel.getOrderId(), "CANCELED");
 
                 // 포인트 환불 처리
@@ -277,8 +305,10 @@ public class PaymentsServiceImpl implements PaymentsService {
                     pointService.refundPoint(userId, usedPoint, paymentToCancel.getOrderId(), cancelReason);
                 }
 
-                paymentToCancel.setStatus(newStatus);
-                return paymentToCancel;
+                // ★ DB에서 최신 상태(취소 시간 포함)를 다시 읽어서 응답
+                return paymentsMapper.findPaymentByOrderId(paymentToCancel.getOrderId())
+                        .orElse(paymentToCancel);
+
             } else {
                 throw new IllegalStateException("토스페이먼츠 환불 요청 실패: HTTP " + response.getStatusCode());
             }
@@ -286,6 +316,61 @@ public class PaymentsServiceImpl implements PaymentsService {
             throw new IllegalStateException("토스페이먼츠 환불 거부: " + e.getResponseBodyAsString(), e);
         } catch (Exception e) {
             throw new RuntimeException("환불 처리 중 알 수 없는 오류 발생", e);
+        }
+    }
+
+    /**
+     * 최근 2회 연속 환불 + 30일 이내인지 체크
+     *  - paymentsMapper.findRecentPaymentsByUser(userId, 2) 사용
+     */
+    private boolean isUserInRefundBan(String userId) {
+        List<Payments> recent = paymentsMapper.findRecentPaymentsByUser(userId, 2);
+        if (recent == null || recent.size() < 2) {
+            return false;
+        }
+
+        Payments latest   = recent.get(0); // 가장 최근
+        Payments previous = recent.get(1); // 그 이전
+
+        // 둘 다 취소 상태가 아니면 연속 환불 아님
+        if (!"CANCELED".equals(latest.getStatus())
+                || !"CANCELED".equals(previous.getStatus())) {
+            return false;
+        }
+
+        // 최근 결제 요청 시간 기준으로 30일 이내인지 확인
+        LocalDateTime latestRequestedAt = parseDateTime(latest.getRequestedAt());
+        if (latestRequestedAt == null) {
+            return false;
+        }
+
+        return latestRequestedAt.isAfter(LocalDateTime.now().minusDays(30));
+    }
+
+    /**
+     * DB/엔티티에서 가져온 날짜 문자열을 LocalDateTime으로 변환
+     *  - "2025-11-24T12:34:56.789" (LocalDateTime.toString()) 형식
+     *  - "2025-11-24 12:34:56" (MySQL DATETIME) 형식 둘 다 대응
+     */
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.isBlank()) return null;
+
+        try {
+            // LocalDateTime.now().toString() 형태 (예: 2025-11-24T12:34:56.789)
+            if (value.contains("T")) {
+                return LocalDateTime.parse(value);
+            }
+
+            // MySQL DATETIME 형태 (예: 2025-11-24 12:34:56 or 2025-11-24 12:34:56.0)
+            String trimmed = value;
+            if (value.length() >= 19) {
+                trimmed = value.substring(0, 19); // "yyyy-MM-dd HH:mm:ss"
+            }
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            return LocalDateTime.parse(trimmed, fmt);
+        } catch (Exception e) {
+            // 파싱 실패 시 null 리턴해서 제한 로직에서 그냥 무시하도록
+            return null;
         }
     }
 }

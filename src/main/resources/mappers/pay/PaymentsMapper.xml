@@ -5,6 +5,7 @@
 
 <mapper namespace="kr.or.kosa.backend.pay.repository.PaymentsMapper">
 
+    <!-- ================== ResultMap ================== -->
     <resultMap id="PaymentsResultMap" type="kr.or.kosa.backend.pay.entity.Payments">
         <id     column="order_id"        property="orderId"/>
         <result column="user_id"         property="userId"/>
@@ -17,8 +18,10 @@
         <result column="amount"          property="amount"/>
         <result column="status"          property="status"/>
         <result column="requested_at"    property="requestedAt"/>
+        <result column="canceled_at"     property="canceledAt"/>
     </resultMap>
 
+    <!-- ================== INSERT ================== -->
     <insert id="insertPayment"
             parameterType="kr.or.kosa.backend.pay.entity.Payments">
         INSERT INTO payments (
@@ -47,6 +50,7 @@
         )
     </insert>
 
+    <!-- ================== SELECT by orderId ================== -->
     <select id="findPaymentByOrderId"
             resultMap="PaymentsResultMap">
         SELECT
@@ -60,11 +64,13 @@
         used_point,
         amount,
         status,
-        requested_at
+        requested_at,
+        canceled_at
         FROM payments
         WHERE order_id = #{orderId}
     </select>
 
+    <!-- ================== SELECT by paymentKey (환불용) ================== -->
     <select id="findPaymentByPaymentKey"
             resultMap="PaymentsResultMap">
         SELECT
@@ -78,11 +84,14 @@
         used_point,
         amount,
         status,
-        requested_at
+        requested_at,
+        canceled_at
         FROM payments
         WHERE payment_key = #{paymentKey}
+        AND status = 'DONE'
     </select>
 
+    <!-- ================== UPDATE status (승인 시) ================== -->
     <update id="updatePaymentStatus"
             parameterType="kr.or.kosa.backend.pay.entity.Payments">
         UPDATE payments
@@ -92,6 +101,7 @@
         WHERE order_id = #{orderId}
     </update>
 
+    <!-- ================== UPDATE status (취소 시) ================== -->
     <update id="updatePaymentStatusToCanceled">
         UPDATE payments
         SET
@@ -99,5 +109,27 @@
         canceled_at = NOW()
         WHERE order_id = #{orderId}
     </update>
+
+    <!-- ================== 최근 결제 N건 (환불 남용 체크용) ================== -->
+    <select id="findRecentPaymentsByUser"
+            resultMap="PaymentsResultMap">
+        SELECT
+        order_id,
+        user_id,
+        plan_code,
+        payment_key,
+        order_name,
+        customer_name,
+        original_amount,
+        used_point,
+        amount,
+        status,
+        requested_at,
+        canceled_at
+        FROM payments
+        WHERE user_id = #{userId}
+        ORDER BY requested_at DESC
+        LIMIT #{limit}
+    </select>
 
 </mapper>

@@ -42,4 +42,6 @@ public class Payments {
 
     // 결제 요청/생성 일시 (ISO 문자열 등)
     private String requestedAt;
+
+    private String canceledAt;
 }
