@@ -47,7 +47,7 @@ public class SecurityConfig {
                                 "/users/password/reset/confirm",
                                 "/email/**",
                                 "/payments/**",
-                                "/api/algo/**", "/api/algo/test/**"
+                                "/algo/**", "/algo/test/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
