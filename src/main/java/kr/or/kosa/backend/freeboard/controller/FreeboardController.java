@@ -1,49 +1,74 @@
 package kr.or.kosa.backend.freeboard.controller;
 
+import kr.or.kosa.backend.freeboard.domain.Freeboard;
+import kr.or.kosa.backend.freeboard.dto.FreeboardDto;
+import kr.or.kosa.backend.freeboard.service.FreeboardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
 import java.util.Map;
 
-import kr.or.kosa.backend.freeboard.domain.Freeboard;
-import kr.or.kosa.backend.freeboard.service.FreeboardService;
-
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/freeboard")
+@RequiredArgsConstructor
 public class FreeboardController {
 
-    private final FreeboardService service;
+    private final FreeboardService freeboardService;
 
-    // 페이징 게시글 목록
-    @GetMapping("/list")
-    public Map<String, Object> list(
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> create(
+            @RequestBody FreeboardDto dto,
+            @RequestAttribute(value = "userId", required = false) Long userId
+    ) {
+        // 로그인 구현 전까지 임시로 userId = 1L 사용
+        Long actualUserId = (userId != null) ? userId : 1L;
+        Long freeboardId = freeboardService.write(dto, actualUserId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("freeboardId", freeboardId);
+
+        return ResponseEntity.ok(result);
+    }
+
+    // 상세 조회
+    @GetMapping("/{freeboardId}")
+    public ResponseEntity<Freeboard> get(@PathVariable Long freeboardId) {
+        Freeboard freeboard = freeboardService.detail(freeboardId);
+        return ResponseEntity.ok(freeboard);
+    }
+
+    // 목록
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return service.listPage(page, size);
+        Map<String, Object> result = freeboardService.listPage(page, size);
+        return ResponseEntity.ok(result);
     }
 
-    // 게시글 상세 보기
-    @GetMapping("/{id}")
-    public Freeboard detail(@PathVariable Long id) {
-        return service.detail(id);
+    @PutMapping("/{freeboardId}")
+    public ResponseEntity<Void> update(
+            @PathVariable Long freeboardId,
+            @RequestBody FreeboardDto dto,
+            @RequestAttribute(value = "userId", required = false) Long userId
+    ) {
+        // 로그인 구현 전까지 임시로 userId = 1L 사용
+        Long actualUserId = (userId != null) ? userId : 1L;
+        freeboardService.edit(freeboardId, dto, actualUserId);
+        return ResponseEntity.ok().build();
     }
 
-    // 게시글 작성
-    @PostMapping
-    public void write(@RequestBody Freeboard board) {
-        service.write(board);
-    }
-
-    // 게시글 수정
-    @PutMapping
-    public void edit(@RequestBody Freeboard board) {
-        service.edit(board);
-    }
-
-    // 게시글 삭제
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
+    @DeleteMapping("/{freeboardId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long freeboardId,
+            @RequestAttribute(value = "userId", required = false) Long userId
+    ) {
+        // 로그인 구현 전까지 임시로 userId = 1L 사용
+        Long actualUserId = (userId != null) ? userId : 1L;
+        freeboardService.delete(freeboardId, actualUserId);
+        return ResponseEntity.ok().build();
     }
 }

@@ -32,6 +32,7 @@ public class ProblemGenerationRequestDto {
      * 프로그래밍 언어 (선택)
      * 기본값: "ALL" (모든 언어 지원)
      */
+    @Builder.Default
     private String language = "ALL";
 
     /**
@@ -50,11 +51,13 @@ public class ProblemGenerationRequestDto {
      * 메모리 제한 (선택, MB)
      * 기본값: 256MB
      */
+    @Builder.Default
     private Integer memoryLimit = 256;
 
     /**
      * 생성할 테스트케이스 수 (선택)
      * 기본값: 5개
      */
+    @Builder.Default
     private Integer testCaseCount = 5;
 }

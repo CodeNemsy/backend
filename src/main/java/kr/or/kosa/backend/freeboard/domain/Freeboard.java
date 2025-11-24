@@ -9,9 +9,11 @@ public class Freeboard {
     private Long userId;
     private String freeboardTitle;
     private String freeboardContent;
+    private String freeboardPlainText;
     private Long freeboardClick;
     private String freeboardImage;
     private String freeboardRepresentImage;
     private LocalDateTime freeboardCreatedAt;
     private String freeboardDeletedYn;
+
 }

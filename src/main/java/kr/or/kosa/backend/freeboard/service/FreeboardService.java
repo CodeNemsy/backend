@@ -1,22 +1,28 @@
 package kr.or.kosa.backend.freeboard.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import kr.or.kosa.backend.freeboard.domain.Freeboard;
+import kr.or.kosa.backend.freeboard.dto.FreeboardDto;
+import kr.or.kosa.backend.freeboard.mapper.FreeboardMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import kr.or.kosa.backend.freeboard.domain.Freeboard;
-import kr.or.kosa.backend.freeboard.mapper.FreeboardMapper;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class FreeboardService {
 
     private final FreeboardMapper mapper;
+    private final ObjectMapper objectMapper;
 
-    // 페이지 단위 목록
+    // 페이지 단위 목록 조회
     public Map<String, Object> listPage(int page, int size) {
         int offset = (page - 1) * size;
 
@@ -28,36 +34,92 @@ public class FreeboardService {
         result.put("totalCount", totalCount);
         result.put("page", page);
         result.put("size", size);
+        result.put("totalPages", (int) Math.ceil((double) totalCount / size));
 
         return result;
     }
 
-    // 상세 보기 (조회수 증가 포함)
+    // 상세 조회 (조회수 증가 포함)
+    @Transactional
     public Freeboard detail(Long id) {
         mapper.increaseClick(id);
-        return mapper.selectById(id);
+
+        Freeboard freeboard = mapper.selectById(id);
+        if (freeboard == null) {
+            throw new IllegalArgumentException("게시글을 찾을 수 없습니다.");
+        }
+
+        return freeboard;
     }
 
-    // 작성
-    public void write(Freeboard board) {
-        // 프론트에서 이미 대표 이미지를 추출해서 보내줌
-        // representImage가 null이거나 빈 값이면 그대로 저장 (이미지 없는 글)
-        mapper.insert(board);
+    // 게시글 작성
+    @Transactional
+    public Long write(FreeboardDto dto, Long userId) {
+        Freeboard freeboard = new Freeboard();
+        freeboard.setUserId(userId);
+        freeboard.setFreeboardTitle(dto.getFreeboardTitle());
+        freeboard.setFreeboardRepresentImage(dto.getFreeboardRepresentImage());
+
+        try {
+            freeboard.setFreeboardContent(dto.toJsonContent(objectMapper));
+            freeboard.setFreeboardPlainText(dto.toPlainText(objectMapper));
+        } catch (Exception e) {
+            log.error("JSON 변환 실패", e);
+            throw new RuntimeException("게시글 작성 중 오류가 발생했습니다.", e);
+        }
+
+        int result = mapper.insert(freeboard);
+        if (result == 0) {
+            throw new RuntimeException("게시글 작성에 실패했습니다.");
+        }
+
+        return freeboard.getFreeboardId();
     }
 
-    // 수정
-    public void edit(Freeboard board) {
-        // 프론트에서 이미 대표 이미지를 추출해서 보내줌
-        mapper.update(board);
+    // 게시글 수정
+    @Transactional
+    public void edit(Long id, FreeboardDto dto, Long userId) {
+        Freeboard existing = mapper.selectById(id);
+        if (existing == null) {
+            throw new IllegalArgumentException("게시글을 찾을 수 없습니다.");
+        }
+        if (!existing.getUserId().equals(userId)) {
+            throw new SecurityException("게시글 수정 권한이 없습니다.");
+        }
+
+        Freeboard freeboard = new Freeboard();
+        freeboard.setFreeboardId(id);
+        freeboard.setFreeboardTitle(dto.getFreeboardTitle());
+        freeboard.setFreeboardRepresentImage(dto.getFreeboardRepresentImage());
+
+        try {
+            freeboard.setFreeboardContent(dto.toJsonContent(objectMapper));
+            freeboard.setFreeboardPlainText(dto.toPlainText(objectMapper));
+        } catch (Exception e) {
+            log.error("JSON 변환 실패: freeboardId={}", id, e);
+            throw new RuntimeException("게시글 수정 중 오류가 발생했습니다.", e);
+        }
+
+        int result = mapper.update(freeboard);
+        if (result == 0) {
+            throw new RuntimeException("게시글 수정에 실패했습니다.");
+        }
     }
 
-    // 삭제
-    public void delete(Long id) {
-        mapper.delete(id);
-    }
+    // 게시글 삭제 (소프트 삭제)
+    @Transactional
+    public void delete(Long id, Long userId) {
+        Freeboard existing = mapper.selectById(id);
+        if (existing == null) {
+            throw new IllegalArgumentException("게시글을 찾을 수 없습니다.");
+        }
+        if (!existing.getUserId().equals(userId)) {
+            throw new SecurityException("게시글 삭제 권한이 없습니다.");
+        }
 
-    // 전체 수
-    public int totalCount() {
-        return mapper.countAll();
+        int result = mapper.delete(id);
+        if (result == 0) {
+            throw new RuntimeException("게시글 삭제에 실패했습니다.");
+        }
     }
 }
