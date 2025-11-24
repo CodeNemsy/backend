@@ -39,22 +39,17 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/users/login",
-                                "/users/register",
-                                "/users/refresh",
-                                "/users/password/reset/request",
-                                "/users/password/reset/confirm",
-                                "/email/**",
-                                "/payments/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
-                        UsernamePasswordAuthenticationFilter.class
+//                        .requestMatchers(
+//                                "/**"
+//                        )
+//                        .permitAll()
+                        .anyRequest().permitAll()
                 );
+
+//                .addFilterBefore(
+//                        new JwtAuthenticationFilter(jwtProvider),
+//                        UsernamePasswordAuthenticationFilter.class
+//                );
 
         return http.build();
     }
