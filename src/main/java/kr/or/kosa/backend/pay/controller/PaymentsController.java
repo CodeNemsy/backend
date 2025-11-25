@@ -1,5 +1,6 @@
 package kr.or.kosa.backend.pay.controller;
 
+import kr.or.kosa.backend.pay.dto.UpgradeQuoteResponse;
 import kr.or.kosa.backend.pay.entity.Payments;
 import kr.or.kosa.backend.pay.entity.Subscription;
 import kr.or.kosa.backend.pay.service.PaymentsService;
@@ -7,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,21 +129,32 @@ public class PaymentsController {
      * 3. 특정 사용자의 활성 구독 목록 조회
      */
     @GetMapping("/subscriptions/{userId}")
-    public ResponseEntity<List<Subscription>> getSubscriptions(@PathVariable String userId) {
+    public ResponseEntity<?> getSubscriptions(@PathVariable String userId) {
         try {
             List<Subscription> subscriptions = paymentsService.getActiveSubscriptions(userId);
 
-            if (subscriptions.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+            // NPE 방지용
+            if (subscriptions == null) {
+                subscriptions = Collections.emptyList();
             }
+
+            // ❗ 항상 200 OK + JSON 배열([] 또는 [ ... ]) 리턴
             return ResponseEntity.ok(subscriptions);
+
         } catch (Exception e) {
             e.printStackTrace();
+
+            // 에러도 JSON으로 넘겨주면 프론트에서 처리하기 편함
+            Map<String, String> error = new HashMap<>();
+            error.put("code", "SUBSCRIPTION_FETCH_ERROR");
+            error.put("message", "구독 정보를 조회하는 중 서버 오류가 발생했습니다.");
+
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
+                    .body(error);
         }
     }
+
 
     /**
      * 4. 결제 취소(환불)
@@ -168,6 +181,35 @@ public class PaymentsController {
             errorResponse.put("code", "INTERNAL_SERVER_ERROR");
             errorResponse.put("message", "환불 처리 중 알 수 없는 서버 오류가 발생했습니다.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * BASIC → PRO 업그레이드 시, 남은 일수 기준 추가 결제 금액 안내
+     *
+     * 예: GET /payments/upgrade-quote?userId=TEST_USER_001&planCode=PRO
+     */
+    @GetMapping("/upgrade-quote")
+    public ResponseEntity<?> getUpgradeQuote(
+            @RequestParam String userId,
+            @RequestParam String planCode
+    ) {
+        try {
+            UpgradeQuoteResponse quote = paymentsService.getUpgradeQuote(userId, planCode);
+            return ResponseEntity.ok(quote);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "code", "UPGRADE_QUOTE_VALIDATION_ERROR",
+                            "message", e.getMessage()
+                    ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "code", "UPGRADE_QUOTE_INTERNAL_ERROR",
+                            "message", "업그레이드 견적 계산 중 서버 오류가 발생했습니다."
+                    ));
         }
     }
 }
