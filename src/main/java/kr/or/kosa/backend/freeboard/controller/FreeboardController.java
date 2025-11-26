@@ -1,6 +1,7 @@
 package kr.or.kosa.backend.freeboard.controller;
 
 import jakarta.validation.Valid;
+import kr.or.kosa.backend.commons.response.ApiResponse;
 import kr.or.kosa.backend.freeboard.domain.Freeboard;
 import kr.or.kosa.backend.freeboard.dto.FreeboardCreateRequest;
 import kr.or.kosa.backend.freeboard.dto.FreeboardUpdateRequest;
@@ -20,7 +21,7 @@ public class FreeboardController {
     private final FreeboardService freeboardService;
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> create(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> create(
             @Valid @RequestBody FreeboardCreateRequest request,
             @RequestAttribute(value = "userId", required = false) Long userId
     ) {
@@ -30,7 +31,7 @@ public class FreeboardController {
         Map<String, Object> result = new HashMap<>();
         result.put("freeboardId", freeboardId);
 
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/{freeboardId}")
