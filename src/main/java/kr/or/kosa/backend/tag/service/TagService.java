@@ -1,31 +1,33 @@
 package kr.or.kosa.backend.tag.service;
 
-import kr.or.kosa.backend.tag.domain.Tag;
+import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
 import kr.or.kosa.backend.tag.domain.CodeboardTag;
 import kr.or.kosa.backend.tag.domain.FreeboardTag;
-import kr.or.kosa.backend.tag.mapper.TagMapper;
+import kr.or.kosa.backend.tag.domain.Tag;
+import kr.or.kosa.backend.tag.dto.TagAutocompleteDto;
+import kr.or.kosa.backend.tag.exception.TagErrorCode;
 import kr.or.kosa.backend.tag.mapper.CodeboardTagMapper;
 import kr.or.kosa.backend.tag.mapper.FreeboardTagMapper;
-import kr.or.kosa.backend.tag.dto.TagAutocompleteDto;
-
+import kr.or.kosa.backend.tag.mapper.TagMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class TagService {
+
     private final TagMapper tagMapper;
     private final CodeboardTagMapper codeboardTagMapper;
     private final FreeboardTagMapper freeboardTagMapper;
 
-    // 태그 조회 또는 생성
+    // 태그 조회 또는 생성 (Validation은 이미 Request에서 완료됨)
     @Transactional
     public Tag getOrCreateTag(String tagInput) {
         String normalizedName = tagInput.toLowerCase().trim();
@@ -41,12 +43,19 @@ public class TagService {
             Tag newTag = Tag.builder()
                     .tagName(normalizedName)
                     .build();
-            tagMapper.insertTag(newTag);
+
+            int result = tagMapper.insertTag(newTag);
+            if (result == 0 || newTag.getTagId() == null) {
+                throw new CustomBusinessException(TagErrorCode.TAG_SAVE_FAILED);
+            }
+
+            log.info("새 태그 생성: tagId={}, tagName={}", newTag.getTagId(), normalizedName);
             return newTag;
+
         } catch (DataIntegrityViolationException e) {
             // 동시성 문제로 UNIQUE 제약 위반 시 재조회
             return tagMapper.findByTagName(normalizedName)
-                    .orElseThrow(() -> new RuntimeException("태그 생성 실패"));
+                    .orElseThrow(() -> new CustomBusinessException(TagErrorCode.TAG_SAVE_FAILED));
         }
     }
 
@@ -58,23 +67,21 @@ public class TagService {
         }
 
         for (String tagInput : tagInputs) {
-            String trimmedInput = tagInput.trim();
-            if (trimmedInput.isEmpty()) {
-                continue;
-            }
+            Tag tag = getOrCreateTag(tagInput.trim());
 
-            // 태그 조회 또는 생성
-            Tag tag = getOrCreateTag(trimmedInput);
-
-            // 연결 테이블에 저장
             CodeboardTag codeboardTag = CodeboardTag.builder()
                     .codeboardId(codeboardId)
                     .tagId(tag.getTagId())
-                    .tagDisplayName(trimmedInput)
+                    .tagDisplayName(tagInput.trim())
                     .build();
 
-            codeboardTagMapper.insert(codeboardTag);
+            int result = codeboardTagMapper.insert(codeboardTag);
+            if (result == 0) {
+                throw new CustomBusinessException(TagErrorCode.TAG_SAVE_FAILED);
+            }
         }
+
+        log.info("코드게시판 태그 저장 완료: codeboardId={}, 태그 수={}", codeboardId, tagInputs.size());
     }
 
     // 자유게시판 게시글에 태그 저장
@@ -85,23 +92,21 @@ public class TagService {
         }
 
         for (String tagInput : tagInputs) {
-            String trimmedInput = tagInput.trim();
-            if (trimmedInput.isEmpty()) {
-                continue;
-            }
+            Tag tag = getOrCreateTag(tagInput.trim());
 
-            // 태그 조회 또는 생성
-            Tag tag = getOrCreateTag(trimmedInput);
-
-            // 연결 테이블에 저장
             FreeboardTag freeboardTag = FreeboardTag.builder()
                     .freeboardId(freeboardId)
                     .tagId(tag.getTagId())
-                    .tagDisplayName(trimmedInput)
+                    .tagDisplayName(tagInput.trim())
                     .build();
 
-            freeboardTagMapper.insert(freeboardTag);
+            int result = freeboardTagMapper.insert(freeboardTag);
+            if (result == 0) {
+                throw new CustomBusinessException(TagErrorCode.TAG_SAVE_FAILED);
+            }
         }
+
+        log.info("자유게시판 태그 저장 완료: freeboardId={}, 태그 수={}", freeboardId, tagInputs.size());
     }
 
     // 코드게시판 게시글의 태그 조회
@@ -123,21 +128,21 @@ public class TagService {
     // 코드게시판 게시글 태그 수정
     @Transactional
     public void updateCodeboardTags(Long codeboardId, List<String> tagInputs) {
-        // 기존 태그 삭제
         codeboardTagMapper.deleteByCodeboardId(codeboardId);
 
-        // 새 태그 저장
-        attachTagsToCodeboard(codeboardId, tagInputs);
+        if (tagInputs != null && !tagInputs.isEmpty()) {
+            attachTagsToCodeboard(codeboardId, tagInputs);
+        }
     }
 
     // 자유게시판 게시글 태그 수정
     @Transactional
     public void updateFreeboardTags(Long freeboardId, List<String> tagInputs) {
-        // 기존 태그 삭제
         freeboardTagMapper.deleteByFreeboardId(freeboardId);
 
-        // 새 태그 저장
-        attachTagsToFreeboard(freeboardId, tagInputs);
+        if (tagInputs != null && !tagInputs.isEmpty()) {
+            attachTagsToFreeboard(freeboardId, tagInputs);
+        }
     }
 
     // 자동완성 검색
@@ -146,35 +151,39 @@ public class TagService {
             return new ArrayList<>();
         }
 
-        String lowerKeyword = keyword.toLowerCase().trim();
+        if (limit < 1 || limit > 20) {
+            limit = 10;
+        }
 
-        // TAG 테이블에서 검색
+        String lowerKeyword = keyword.toLowerCase().trim();
         List<Tag> tags = tagMapper.findByTagNameStartingWith(lowerKeyword);
 
         return tags.stream()
                 .limit(limit)
                 .map(tag -> {
-                    // 가장 많이 사용된 표기 찾기
                     String popularDisplay = tagMapper.findMostUsedDisplayName(tag.getTagId());
-                    if (popularDisplay == null) {
+                    if (popularDisplay == null || popularDisplay.isEmpty()) {
                         popularDisplay = tag.getTagName();
                     }
 
-                    // 사용 횟수 계산
                     Long count = tagMapper.countByTagId(tag.getTagId());
 
                     return TagAutocompleteDto.builder()
                             .tagId(tag.getTagId())
                             .tagDisplayName(popularDisplay)
-                            .count(count)
+                            .count(count != null ? count : 0L)
                             .build();
                 })
-                .sorted(Comparator.comparing(TagAutocompleteDto::getCount).reversed()) // 사용 빈도 높은 순
+                .sorted(Comparator.comparing(TagAutocompleteDto::getCount).reversed())
                 .toList();
     }
 
     // 태그로 코드게시판 게시글 검색
     public List<Long> searchCodeboardByTag(String tagDisplay) {
+        if (tagDisplay == null || tagDisplay.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
         String normalizedTag = tagDisplay.toLowerCase().trim();
 
         Optional<Tag> tag = tagMapper.findByTagName(normalizedTag);
@@ -190,6 +199,10 @@ public class TagService {
 
     // 태그로 자유게시판 게시글 검색
     public List<Long> searchFreeboardByTag(String tagDisplay) {
+        if (tagDisplay == null || tagDisplay.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
         String normalizedTag = tagDisplay.toLowerCase().trim();
 
         Optional<Tag> tag = tagMapper.findByTagName(normalizedTag);
