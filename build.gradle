@@ -95,6 +95,13 @@ def isAppleSilicon() {
     return System.getProperty("os.name") == "Mac OS X" && System.getProperty("os.arch") == "aarch64"
 }
 
+bootJar {
+    mainClass = 'kr.or.kosa.backend.BackendApplication'
+}
+
+bootRun {
+    mainClass = 'kr.or.kosa.backend.BackendApplication'
+}
 
 tasks.named('test') {
     useJUnitPlatform()
