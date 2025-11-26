@@ -147,9 +147,19 @@ public class UserController {
     }
 
     // ============================================================================
+    // 내 정보 조회
+    // ============================================================================
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDto> getMyInfo(
+            @AuthenticationPrincipal JwtUserDetails user
+    ) {
+        UserResponseDto dto = userService.getUserInfo(user.id());
+        return ResponseEntity.ok(dto);
+    }
+
+    // ============================================================================
     // 일반 정보 수정 (이름 / 닉네임 / 프로필 사진)
     // ============================================================================
-
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> updateMyInfo(
             @AuthenticationPrincipal JwtUserDetails user,

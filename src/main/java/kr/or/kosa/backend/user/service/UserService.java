@@ -24,4 +24,6 @@ public interface UserService {
     UserResponseDto updateUserInfo(Integer userId, UserUpdateRequestDto dto, MultipartFile image);
 
     String updateEmail(Integer userId, String newEmail);
+
+    UserResponseDto getUserInfo(Integer userId);
 }

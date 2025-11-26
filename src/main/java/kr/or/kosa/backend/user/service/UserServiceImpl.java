@@ -348,4 +348,29 @@ public class UserServiceImpl implements UserService {
     public boolean isResetTokenValid(String token) {
         return passwordResetTokenService.validateToken(token) != null;
     }
+
+    // ---------------------------------------------------------
+    // 내 정보 조회
+    // ---------------------------------------------------------
+    @Override
+    public UserResponseDto getUserInfo(Integer userId) {
+
+        User user = userMapper.findById(userId);
+
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        return UserResponseDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .nickname(user.getNickname())
+                .image(user.getImage())
+                .grade(user.getGrade())
+                .role(user.getRole())
+                .enabled(user.getEnabled())
+                .build();
+    }
+
 }
