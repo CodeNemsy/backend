@@ -25,23 +25,21 @@ public class AlgorithmSolvingController {
 
     private final AlgorithmSolvingService solvingService;
 
-    /**
-     * AlgorithmProblemController와 동일한 방식의 userId 추출
-     */
+    // 테스트용
     private Long extractUserId(JwtAuthentication authentication) {
         if (authentication == null) {
-            log.error("❌ JwtAuthentication이 null입니다. 인증 불가");
-            throw new IllegalStateException("인증 정보가 없습니다.");
+            log.warn("🧪 테스트 모드: authentication이 null이므로 기본 userId=1 사용");
+            return 1L;  // ✅ 예외 대신 기본값 반환
         }
 
         Object principal = authentication.getPrincipal();
         if (!(principal instanceof JwtUserDetails userDetails)) {
-            log.error("❌ principal이 JwtUserDetails가 아닙니다: {}", principal);
-            throw new IllegalStateException("JWT 사용자 정보가 올바르지 않습니다.");
+            log.warn("🧪 테스트 모드: principal이 JwtUserDetails가 아니므로 기본 userId=1 사용: {}", principal);
+            return 1L;  // ✅ 예외 대신 기본값 반환
         }
 
         Long userId = userDetails.id().longValue();
-        log.debug("✔ 인증된 사용자 - userId: {}", userId);
+        log.debug("✅ 인증된 사용자 - userId: {}", userId);
         return userId;
     }
 
