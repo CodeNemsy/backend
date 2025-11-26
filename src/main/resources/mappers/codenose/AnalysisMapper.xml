@@ -4,36 +4,224 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="kr.or.kosa.backend.codenose.mapper.AnalysisMapper">
 
-    <insert id="saveAnalysisHistory" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
-        INSERT INTO CODERESULT (
-            ANALYSIS_ID, USER_ID, REPOSITORY_URL, FILE_PATH, ANALYSIS_TYPE,
-            TONE_LEVEL, CUSTOM_REQUIREMENTS, ANALYSIS_RESULT, AI_SCORE,
-            CODE_SMELLS, SUGGESTIONS, CREATED_AT
+    <!-- ========== ResultMap 정의 ========== -->
+
+    <!-- GITHUB_FILES ResultMap -->
+    <resultMap id="GithubFileResultMap" type="kr.or.kosa.backend.codenose.dto.dtoReal.GithubFileDTO">
+        <id property="fileId" column="FILE_ID"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="repositoryUrl" column="REPOSITORY_URL"/>
+        <result property="owner" column="OWNER"/>
+        <result property="repo" column="REPO"/>
+        <result property="filePath" column="FILE_PATH"/>
+        <result property="fileName" column="FILE_NAME"/>
+        <result property="fileContent" column="FILE_CONTENT"/>
+        <result property="fileSize" column="FILE_SIZE"/>
+        <result property="encoding" column="ENCODING"/>
+        <result property="createdAt" column="CREATED_AT"/>
+        <result property="updatedAt" column="UPDATED_AT"/>
+    </resultMap>
+
+    <!-- CODE_ANALYSIS_HISTORY ResultMap -->
+    <resultMap id="CodeResultResultMap" type="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
+        <id property="analysisId" column="ANALYSIS_ID"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="repositoryUrl" column="REPOSITORY_URL"/>
+        <result property="filePath" column="FILE_PATH"/>
+        <result property="analysisType" column="ANALYSIS_TYPE"/>
+        <result property="toneLevel" column="TONE_LEVEL"/>
+        <result property="customRequirements" column="CUSTOM_REQUIREMENTS"/>
+        <result property="analysisResult" column="ANALYSIS_RESULT"/>
+        <result property="aiScore" column="AI_SCORE"/>
+        <result property="codeSmells" column="CODE_SMELLS"/>
+        <result property="suggestions" column="SUGGESTIONS"/>
+        <result property="createdAt" column="CREATED_AT"/>
+    </resultMap>
+
+    <!-- ========== GITHUB_FILES 관련 쿼리 ========== -->
+
+    <!-- GitHub 파일 저장 -->
+    <insert id="saveFileContent" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.GithubFileDTO">
+        INSERT INTO GITHUB_FILES (
+            FILE_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            OWNER,
+            REPO,
+            FILE_PATH,
+            FILE_NAME,
+            FILE_CONTENT,
+            FILE_SIZE,
+            ENCODING,
+            CREATED_AT,
+            UPDATED_AT
         ) VALUES (
-            #{analysisId}, #{userId}, #{repositoryUrl}, #{filePath}, #{analysisType},
-            #{toneLevel}, #{customRequirements}, #{analysisResult, jdbcType=VARCHAR}, #{aiScore},
-            #{codeSmells, jdbcType=VARCHAR}, #{suggestions, jdbcType=VARCHAR}, #{createdAt}
-        )
+                     #{fileId},
+                     #{userId},
+                     #{repositoryUrl},
+                     #{owner},
+                     #{repo},
+                     #{filePath},
+                     #{fileName},
+                     #{fileContent},
+                     #{fileSize},
+                     #{encoding},
+                     #{createdAt},
+                     #{updatedAt}
+                 )
     </insert>
 
-    <select id="findAnalysisHistoryByUserId" resultType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
-        SELECT * FROM CODEANALYSISHISTORY WHERE USER_ID = #{userId} ORDER BY CREATED_AT DESC
+    <!-- fileId로 GitHub 파일 조회 -->
+    <select id="findFileById" parameterType="string" resultMap="GithubFileResultMap">
+        SELECT
+            FILE_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            OWNER,
+            REPO,
+            FILE_PATH,
+            FILE_NAME,
+            FILE_CONTENT,
+            FILE_SIZE,
+            ENCODING,
+            CREATED_AT,
+            UPDATED_AT
+        FROM GITHUB_FILES
+        WHERE FILE_ID = #{fileId}
     </select>
 
+    <!-- repositoryUrl + filePath로 최신 GitHub 파일 조회 -->
+    <select id="findLatestFileContent" resultMap="GithubFileResultMap">
+        SELECT
+            FILE_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            OWNER,
+            REPO,
+            FILE_PATH,
+            FILE_NAME,
+            FILE_CONTENT,
+            FILE_SIZE,
+            ENCODING,
+            CREATED_AT,
+            UPDATED_AT
+        FROM GITHUB_FILES
+        WHERE REPOSITORY_URL = #{repositoryUrl}
+          AND FILE_PATH = #{filePath}
+        ORDER BY CREATED_AT DESC
+            LIMIT 1
+    </select>
+
+    <!-- ========== CODE_ANALYSIS_HISTORY 관련 쿼리 ========== -->
+
+    <!-- 코드 분석 결과 저장 -->
+    <insert id="saveCodeResult" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
+        INSERT INTO CODE_ANALYSIS_HISTORY (
+            ANALYSIS_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            FILE_PATH,
+            ANALYSIS_TYPE,
+            TONE_LEVEL,
+            CUSTOM_REQUIREMENTS,
+            ANALYSIS_RESULT,
+            AI_SCORE,
+            CODE_SMELLS,
+            SUGGESTIONS,
+            CREATED_AT
+        ) VALUES (
+                     #{analysisId},
+                     #{userId},
+                     #{repositoryUrl},
+                     #{filePath},
+                     #{analysisType},
+                     #{toneLevel},
+                     #{customRequirements, jdbcType=VARCHAR},
+                     #{analysisResult, jdbcType=LONGVARCHAR},
+                     #{aiScore},
+                     #{codeSmells, jdbcType=LONGVARCHAR},
+                     #{suggestions, jdbcType=LONGVARCHAR},
+                     #{createdAt}
+                 )
+    </insert>
+
+    <!-- 사용자별 코드 분석 결과 조회 -->
+    <select id="findCodeResultByUserId" parameterType="long" resultMap="CodeResultResultMap">
+        SELECT
+            ANALYSIS_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            FILE_PATH,
+            ANALYSIS_TYPE,
+            TONE_LEVEL,
+            CUSTOM_REQUIREMENTS,
+            ANALYSIS_RESULT,
+            AI_SCORE,
+            CODE_SMELLS,
+            SUGGESTIONS,
+            CREATED_AT
+        FROM CODE_ANALYSIS_HISTORY
+        WHERE USER_ID = #{userId}
+        ORDER BY CREATED_AT DESC
+    </select>
+
+    <!-- analysisId로 분석 결과 조회 -->
+    <select id="findCodeResultById" parameterType="string" resultMap="CodeResultResultMap">
+        SELECT
+            ANALYSIS_ID,
+            USER_ID,
+            REPOSITORY_URL,
+            FILE_PATH,
+            ANALYSIS_TYPE,
+            TONE_LEVEL,
+            CUSTOM_REQUIREMENTS,
+            ANALYSIS_RESULT,
+            AI_SCORE,
+            CODE_SMELLS,
+            SUGGESTIONS,
+            CREATED_AT
+        FROM CODE_ANALYSIS_HISTORY
+        WHERE ANALYSIS_ID = #{analysisId}
+    </select>
+
+    <!-- ========== 사용자 코드 패턴 관련 쿼리 ========== -->
+
+    <!-- 사용자 코드 패턴 저장 -->
     <insert id="saveUserCodePattern" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.UserCodePatternDTO">
-        INSERT INTO USERCODEPATTERNS (
-            PATTERN_ID, USER_ID, PATTERN_TYPE, FREQUENCY, LAST_DETECTED, IMPROVEMENT_STATUS
+        INSERT INTO USER_CODE_PATTERNS (
+            PATTERN_ID,
+            USER_ID,
+            PATTERN_TYPE,
+            FREQUENCY,
+            LAST_DETECTED,
+            IMPROVEMENT_STATUS
         ) VALUES (
-            #{patternId}, #{userId}, #{patternType}, #{frequency}, #{lastDetected}, #{improvementStatus}
-        )
+                     #{patternId},
+                     #{userId},
+                     #{patternType},
+                     #{frequency},
+                     #{lastDetected},
+                     #{improvementStatus}
+                 )
     </insert>
 
+    <!-- 사용자별 특정 패턴 조회 -->
     <select id="findUserCodePattern" resultType="kr.or.kosa.backend.codenose.dto.dtoReal.UserCodePatternDTO">
-        SELECT * FROM USERCODEPATTERNS WHERE USER_ID = #{userId} AND PATTERN_TYPE = #{patternType}
+        SELECT
+            PATTERN_ID as patternId,
+            USER_ID as userId,
+            PATTERN_TYPE as patternType,
+            FREQUENCY as frequency,
+            LAST_DETECTED as lastDetected,
+            IMPROVEMENT_STATUS as improvementStatus
+        FROM USER_CODE_PATTERNS
+        WHERE USER_ID = #{userId}
+          AND PATTERN_TYPE = #{patternType}
     </select>
 
+    <!-- 사용자 코드 패턴 업데이트 -->
     <update id="updateUserCodePattern" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.UserCodePatternDTO">
-        UPDATE USERCODEPATTERNS
+        UPDATE USER_CODE_PATTERNS
         SET
             FREQUENCY = #{frequency},
             LAST_DETECTED = #{lastDetected},
@@ -41,40 +229,18 @@
         WHERE PATTERN_ID = #{patternId}
     </update>
 
+    <!-- 사용자별 모든 패턴 조회 -->
     <select id="findAllPatternsByUserId" resultType="kr.or.kosa.backend.codenose.dto.dtoReal.UserCodePatternDTO">
-        SELECT * FROM USERCODEPATTERNS WHERE USER_ID = #{userId} ORDER BY FREQUENCY DESC
+        SELECT
+            PATTERN_ID as patternId,
+            USER_ID as userId,
+            PATTERN_TYPE as patternType,
+            FREQUENCY as frequency,
+            LAST_DETECTED as lastDetected,
+            IMPROVEMENT_STATUS as improvementStatus
+        FROM USER_CODE_PATTERNS
+        WHERE USER_ID = #{userId}
+        ORDER BY FREQUENCY DESC
     </select>
-
-    <!-- 파일 내용 임시 저장 (분석 전) -->
-    <insert id="saveFileContent" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
-        INSERT INTO CODERESULT (
-            ANALYSIS_ID, USER_ID, REPOSITORY_URL, FILE_PATH, CREATED_AT
-        ) VALUES (
-            #{analysisId}, #{userId}, #{repositoryUrl}, #{filePath}, #{createdAt}
-        )
-    </insert>
-
-    <!-- repositoryUrl + filePath로 최신 파일 내용 조회 -->
-    <select id="findLatestFileContent" resultType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
-        SELECT * FROM CODERESULT
-        WHERE REPOSITORY_URL = #{repositoryUrl}
-          AND FILE_PATH = #{filePath}
-        ORDER BY CREATED_AT DESC
-        LIMIT 1
-    </select>
-
-    <!-- 분석 결과로 업데이트 -->
-    <update id="updateAnalysisResult" parameterType="kr.or.kosa.backend.codenose.dto.dtoReal.CodeResultDTO">
-        UPDATE CODERESULT
-        SET
-            ANALYSIS_TYPE = #{analysisType},
-            TONE_LEVEL = #{toneLevel},
-            CUSTOM_REQUIREMENTS = #{customRequirements},
-            ANALYSIS_RESULT = #{analysisResult, jdbcType=VARCHAR},
-            AI_SCORE = #{aiScore},
-            CODE_SMELLS = #{codeSmells, jdbcType=VARCHAR},
-            SUGGESTIONS = #{suggestions, jdbcType=VARCHAR}
-        WHERE ANALYSIS_ID = #{analysisId}
-    </update>
 
 </mapper>
