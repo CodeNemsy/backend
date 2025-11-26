@@ -2,11 +2,18 @@ package kr.or.kosa.backend.freeboard.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Data
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FreeboardDto {
     private Long freeboardId;
     private Long userId;
@@ -16,7 +23,10 @@ public class FreeboardDto {
     private Long freeboardClick;
     private LocalDateTime freeboardCreatedAt;
 
-    @Data
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class BlockDto {
         private String id;
         private String type;  // "tiptap" or "code"

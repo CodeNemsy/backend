@@ -1,9 +1,16 @@
 package kr.or.kosa.backend.freeboard.domain;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Freeboard {
     private Long freeboardId;
     private Long userId;
