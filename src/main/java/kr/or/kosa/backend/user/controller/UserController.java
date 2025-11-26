@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import kr.or.kosa.backend.security.jwt.JwtUserDetails;
 import kr.or.kosa.backend.user.dto.*;
 import kr.or.kosa.backend.user.service.UserService;
-import kr.or.kosa.backend.security.jwt.JwtProvider;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +20,6 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
-    private final JwtProvider jwtProvider;
 
     private static final String KEY_SUCCESS = "success";
     private static final String KEY_MESSAGE = "message";
