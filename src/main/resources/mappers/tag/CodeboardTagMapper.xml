@@ -4,12 +4,6 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="kr.or.kosa.backend.tag.mapper.CodeboardTagMapper">
-    <!-- 데이터 베이스 칼럼명 대문자와 언더스코어 매핑 -->
-    <resultMap id="codeboardTagResultMap" type="kr.or.kosa.cmsplusmain.domain.tag.domain.CodeboardTag">
-        <result property="codeboardId" column="CODEBOARD_ID"/>
-        <result property="tagId" column="TAG_ID"/>
-        <result property="tagDisplayName" column="TAG_DISPLAY_NAME"/>
-    </resultMap>
 
     <!-- 게시글의 태그 조회 -->
     <select id="findByCodeboardId" resultMap="codeboardTagResultMap">

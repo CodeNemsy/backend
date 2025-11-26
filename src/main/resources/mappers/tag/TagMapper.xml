@@ -4,11 +4,6 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="kr.or.kosa.backend.tag.mapper.TagMapper">
-    <!-- 데이터 베이스 칼럼명 대문자와 언더스코어 매핑 -->
-    <resultMap id="tagResultMap" type="kr.or.kosa.cmsplusmain.domain.tag.domain.Tag">
-        <id property="tagId" column="TAG_ID"/>
-        <result property="tagName" column="TAG_NAME"/>
-    </resultMap>
 
     <!-- 태그명으로 조회 -->
     <select id="findByTagName" resultMap="tagResultMap">
