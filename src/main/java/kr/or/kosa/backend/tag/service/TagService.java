@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,7 +169,7 @@ public class TagService {
                             .count(count)
                             .build();
                 })
-                .sorted((TagAutocompleteDto a, TagAutocompleteDto b) -> Long.compare(b.getCount(), a.getCount())) // 사용 빈도 높은 순
+                .sorted(Comparator.comparing(TagAutocompleteDto::getCount).reversed()) // 사용 빈도 높은 순
                 .toList();
     }
 
