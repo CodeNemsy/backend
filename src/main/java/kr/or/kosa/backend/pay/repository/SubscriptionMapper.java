@@ -27,4 +27,7 @@ public interface SubscriptionMapper {
             @Param("userId") String userId,
             @Param("subscriptionType") String subscriptionType
     );
+
+    // 🔥 추가: NOW() 기준으로 이미 끝난 ACTIVE 구독을 EXPIRED로 변경
+    int expireSubscriptionsByUserId(@Param("userId") String userId);
 }

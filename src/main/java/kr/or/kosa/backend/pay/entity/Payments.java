@@ -42,7 +42,17 @@ public class Payments {
 
     // 결제 요청/생성 일시 (ISO 문자열 등)
     private String requestedAt;
-  
-    private String canceledAt;
-}
 
+    private String canceledAt;
+
+    // 결제수단: CARD / EASY_KAKAOPAY / ACCOUNT_TRANSFER / ...
+    private String payMethod;
+
+    // 토스 응답 전체 JSON
+    private String pgRawResponse;
+
+    // ✅ 새로 추가: 카드사, 승인번호, 승인시각
+    private String cardCompany;     // 예: "KB", "HYUNDAI" 등 (issuerCode 기준)
+    private String cardApprovalNo;  // approveNo
+    private String approvedAt;      // 토스 approvedAt 문자열 (ISO 그대로)
+}

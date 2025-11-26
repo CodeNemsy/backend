@@ -37,6 +37,12 @@ public interface PaymentsMapper {
                                       @Param("status") String status);
 
     /**
+     * 결제 READY 단계에서, 동일 orderId 가 이미 있을 때
+     * 기본 정보(금액/플랜/상태/요청시각)를 갱신하는 UPDATE
+     */
+    int updatePaymentForReady(Payments payments);
+
+    /**
      * 특정 유저의 최근 결제 내역 N개를 조회 (환불 남용 체크용)
      *  - requested_at DESC 기준
      */
