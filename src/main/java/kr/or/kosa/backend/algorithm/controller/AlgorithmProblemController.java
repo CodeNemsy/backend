@@ -104,15 +104,20 @@ public class AlgorithmProblemController {
     }
 
     /**
-     * 문제 목록 조회 (페이징)
-     * GET /api/algo/problems?page=1&size=10
+     * 문제 목록 조회 (페이징 및 필터)
+     * GET
+     * /api/algo/problems?page=1&size=10&difficulty=BRONZE&source=AI_GENERATED&keyword=검색어
      */
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProblems(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String keyword) {
 
-        log.info("알고리즘 문제 목록 조회 - page: {}, size: {}", page, size);
+        log.info("알고리즘 문제 목록 조회 - page: {}, size: {}, difficulty: {}, source: {}, keyword: {}",
+                page, size, difficulty, source, keyword);
 
         try {
             // 페이지 번호 검증 (1부터 시작)
@@ -126,9 +131,11 @@ public class AlgorithmProblemController {
             // offset 계산 (0부터 시작)
             int offset = (page - 1) * size;
 
-            // 데이터 조회
-            List<AlgoProblem> problems = algorithmProblemService.getProblems(offset, size);
-            int totalCount = algorithmProblemService.getTotalProblemsCount();
+            // 데이터 조회 (필터 포함)
+            List<AlgoProblem> problems = algorithmProblemService.getProblemsWithFilter(
+                    offset, size, difficulty, source, keyword);
+            int totalCount = algorithmProblemService.getTotalProblemsCountWithFilter(
+                    difficulty, source, keyword);
 
             // 페이징 정보 계산
             int totalPages = (int) Math.ceil((double) totalCount / size);

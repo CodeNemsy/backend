@@ -59,6 +59,43 @@
         WHERE ALGO_PROBLEM_STATUS = 1
     </select>
 
+    <!-- 문제 목록 조회 (필터 포함) -->
+    <select id="selectProblemsWithFilter" resultMap="AlgoProblemResultMap">
+        SELECT
+        <include refid="problemColumns"/>
+        FROM ALGO_PROBLEMS
+        WHERE ALGO_PROBLEM_STATUS = 1
+        <if test="difficulty != null and difficulty != ''">
+            AND ALGO_PROBLEM_DIFFICULTY = #{difficulty}
+        </if>
+        <if test="source != null and source != ''">
+            AND ALGO_PROBLEM_SOURCE = #{source}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (ALGO_PROBLEM_TITLE LIKE CONCAT('%', #{keyword}, '%')
+            OR ALGO_PROBLEM_DESCRIPTION LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY ALGO_CREATED_AT DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 전체 문제 수 조회 (필터 포함) -->
+    <select id="countProblemsWithFilter" resultType="int">
+        SELECT COUNT(*)
+        FROM ALGO_PROBLEMS
+        WHERE ALGO_PROBLEM_STATUS = 1
+        <if test="difficulty != null and difficulty != ''">
+            AND ALGO_PROBLEM_DIFFICULTY = #{difficulty}
+        </if>
+        <if test="source != null and source != ''">
+            AND ALGO_PROBLEM_SOURCE = #{source}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (ALGO_PROBLEM_TITLE LIKE CONCAT('%', #{keyword}, '%')
+            OR ALGO_PROBLEM_DESCRIPTION LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
     <!-- 문제 상세 조회 -->
     <select id="selectProblemById" resultMap="AlgoProblemResultMap">
         SELECT
