@@ -127,14 +127,15 @@
     <update id="scheduleDelete">
         UPDATE USERS
         SET USER_DELETEDAT = #{deletedAt},
-            USER_ISDELETED = 0
+            USER_ISDELETED = 1
         WHERE USER_ID = #{id}
     </update>
 
     <!-- 2) 탈퇴 복구 -->
     <update id="restoreUser">
         UPDATE USERS
-        SET USER_DELETEDAT = NULL
+        SET USER_DELETEDAT = NULL,
+            USER_ISDELETED = 0
         WHERE USER_ID = #{id}
     </update>
 
@@ -143,7 +144,7 @@
         <![CDATA[
         SELECT *
         FROM USERS
-        WHERE USER_ISDELETED = 0
+        WHERE USER_ISDELETED = 1
           AND USER_DELETEDAT IS NOT NULL
           AND USER_DELETEDAT <
     ]]>

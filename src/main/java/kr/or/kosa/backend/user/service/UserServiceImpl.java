@@ -385,18 +385,14 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 이미 탈퇴 예약 중인지 확인
-        boolean isAlreadyScheduled =
-                user.getDeletedAt() != null &&
-                        !Boolean.TRUE.equals(user.getIsDeleted()); // 🔥 핵심 수정
-
-        if (isAlreadyScheduled) {
+        // 이미 탈퇴 요청 중이면 차단
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
             throw new CustomBusinessException(UserErrorCode.ALREADY_SCHEDULED_DELETE);
         }
 
-        // 90일 뒤 탈퇴될 예정
         LocalDateTime deletedAt = LocalDateTime.now().plusDays(90);
 
+        // isDeleted = 1 로 설정하는 SQL 호출
         int result = userMapper.scheduleDelete(userId, deletedAt);
 
         return result > 0;
@@ -413,13 +409,13 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 탈퇴 예약조차 되어있지 않으면 복구 불가
-        if (user.getDeletedAt() == null) {
+        // 탈퇴 요청 상태가 아니면 복구 불가
+        if (!Boolean.TRUE.equals(user.getIsDeleted())) {
             return false;
         }
 
-        // 이미 90일이 지나 실제 삭제가 예정된 계정
-        if (user.getDeletedAt().isBefore(LocalDateTime.now())) {
+        // 90일이 지나 실제 삭제 상태면 복구 불가
+        if (user.getDeletedAt() != null && user.getDeletedAt().isBefore(LocalDateTime.now())) {
             return false;
         }
 
