@@ -2,6 +2,8 @@ package kr.or.kosa.backend.pay.entity;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -11,6 +13,6 @@ import lombok.*;
 public class SubscriptionPlan {
     private String planCode;
     private String name;
-    private int monthlyFee;
+    private BigDecimal monthlyFee;  // INT → BigDecimal
     private boolean active;
 }
