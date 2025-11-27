@@ -1,35 +1,3 @@
-// ================================================================
-// ❌ 기존 코드 (주석 처리됨)
-// ================================================================
-
-// @RequiredArgsConstructor
-// public enum AlgoException implements ErrorCode {
-//     INSERT_ERROR("A001", "등록 중 오류가 발생했습니다."),
-//     UPDATE_ERROR("A002", "수정 중 오류가 발생했습니다."),
-//     DELETE_ERROR("A003", "삭제 중 오류가 발생했습니다."),
-//     NOT_FOUND("A004", "해당 게시글을 찾을 수 없습니다."),
-//     INVALID_INPUT("A005", "요청 데이터가 유효하지 않습니다."),
-//     UNAUTHORIZED_ACCESS("A006", "게시글에 접근할 권한이 없습니다."),
-//     DUPLICATE_TITLE("A007", "이미 존재하는 제목입니다.");
-//
-//     private final String code;
-//     private final String message;
-//
-//     @Override
-//     public String getCode() { return code; }
-//
-//     @Override
-//     public String getMessage() { return message; }
-// }
-// ================================================================
-
-
-
-
-// ================================================================
-// ⭐ 수정됨 — 새로운 알고리즘 도메인 예외 Enum 적용
-// ================================================================
-
 package kr.or.kosa.backend.algorithm.exception;
 
 import kr.or.kosa.backend.commons.exception.custom.ErrorCode;
@@ -71,8 +39,6 @@ public enum AlgoErrorCode implements ErrorCode {
     EVALUATION_NOT_FOUND("ALGO_4400", "해당 평가 정보를 찾을 수 없습니다."),
     EVALUATION_RETRY_FAIL("ALGO_4401", "AI 평가 재실행 중 오류가 발생했습니다."),
     EVALUATION_PROCESSING_ERROR("ALGO_4402", "평가 처리 중 예외가 발생했습니다.");
-
-
 
     // ================================================================
     // Fields + Getter
