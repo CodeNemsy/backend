@@ -46,4 +46,6 @@ out/
 # 환경변수 파일이 있다면
 src/main/java/kr/or/kosa/backend/config/.env
 .env.*
-application.yml
+
+### mail 인증 키 ###
+keystore.p12
