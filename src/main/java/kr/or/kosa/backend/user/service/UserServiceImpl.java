@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -30,17 +31,15 @@ public class UserServiceImpl implements UserService {
     private final JwtProvider jwtProvider;
     private final StringRedisTemplate redisTemplate;
     private final S3Uploader s3Uploader;
-
-    // ⭐ 새로 추가
     private final PasswordResetTokenService passwordResetTokenService;
 
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 14;
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
 
-    // -----------------------------
+    // ---------------------------------------------------------
     // 회원가입
-    // -----------------------------
+    // ---------------------------------------------------------
     @Override
     public int register(UserRegisterRequestDto dto, MultipartFile imageFile) {
 
@@ -64,11 +63,15 @@ public class UserServiceImpl implements UserService {
         user.setImage(null);
         user.setEnabled(true);
 
-        userMapper.insertUser(user);
+        int result = userMapper.insertUser(user);
+        if (result <= 0) {
+            throw new CustomBusinessException(UserErrorCode.USER_CREATE_FAIL);
+        }
+
         int userId = user.getId();
 
+        // 프로필 이미지 처리
         String imageUrl;
-
         if (imageFile != null && !imageFile.isEmpty()) {
             String folderPath = "profile-images/" + dto.getNickname() + "/profile";
             try {
@@ -81,13 +84,12 @@ public class UserServiceImpl implements UserService {
         }
 
         userMapper.updateUserImage(userId, imageUrl);
-
         return userId;
     }
 
-    // -----------------------------
+    // ---------------------------------------------------------
     // 로그인
-    // -----------------------------
+    // ---------------------------------------------------------
     @Override
     public UserLoginResponseDto login(UserLoginRequestDto dto) {
 
@@ -128,9 +130,9 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
-    // -----------------------------
+    // ---------------------------------------------------------
     // Access Token 재발급
-    // -----------------------------
+    // ---------------------------------------------------------
     @Override
     public String refresh(String bearerToken) {
         String refreshToken = bearerToken.replace("Bearer ", "");
@@ -142,7 +144,6 @@ public class UserServiceImpl implements UserService {
         Integer userId = jwtProvider.getUserId(refreshToken);
 
         String savedToken = redisTemplate.opsForValue().get(REFRESH_KEY_PREFIX + userId);
-
         if (savedToken == null || !savedToken.equals(refreshToken)) {
             throw new CustomBusinessException(UserErrorCode.INVALID_TOKEN);
         }
@@ -150,97 +151,102 @@ public class UserServiceImpl implements UserService {
         return jwtProvider.createAccessToken(userId, jwtProvider.getEmail(refreshToken));
     }
 
-    // -----------------------------
+    // ---------------------------------------------------------
     // 로그아웃
-    // -----------------------------
+    // ---------------------------------------------------------
     @Override
-    public void logout(String bearerToken) {
-        String token = bearerToken.replace("Bearer ", "");
+    public boolean logout(String bearerToken) {
 
-        if (!jwtProvider.validateToken(token)) return;
+        try {
+            String token = bearerToken.replace("Bearer ", "");
 
-        Integer userId = jwtProvider.getUserId(token);
+            if (!jwtProvider.validateToken(token)) {
+                return false;
+            }
 
-        redisTemplate.delete(REFRESH_KEY_PREFIX + userId);
+            Integer userId = jwtProvider.getUserId(token);
 
-        long expireAt = jwtProvider.getTokenRemainingTime(token);
-        if (expireAt > 0) {
-            redisTemplate.opsForValue().set(
-                    BLACKLIST_KEY_PREFIX + token,
-                    "logout",
-                    expireAt,
-                    TimeUnit.MILLISECONDS
-            );
+            // refresh 삭제
+            redisTemplate.delete(REFRESH_KEY_PREFIX + userId);
+
+            long expireAt = jwtProvider.getTokenRemainingTime(token);
+
+            if (expireAt > 0) {
+                redisTemplate.opsForValue().set(
+                        BLACKLIST_KEY_PREFIX + token,
+                        "logout",
+                        expireAt,
+                        TimeUnit.MILLISECONDS
+                );
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Logout failed: {}", e.getMessage());
+            return false;
         }
     }
 
-    // ============================================================================
-    // 비밀번호 재설정 (토큰 기반 도입)
-    // ============================================================================
-
-    /**
-     * 비밀번호 재설정 이메일 발송
-     */
+    // ---------------------------------------------------------
+    // 비밀번호 재설정 이메일 요청
+    // ---------------------------------------------------------
     @Override
-    public void sendPasswordResetLink(String email) {
+    public String sendPasswordResetLink(String email) {
 
         User user = userMapper.findByEmail(email);
         if (user == null) {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 1) 토큰 생성
         String token = passwordResetTokenService.createResetToken(user.getId());
-
-        // 2) 이메일 전송
         String resetUrl = "http://localhost:5173/reset-password?token=" + token;
 
-        emailVerificationService.send(
+        boolean sent = emailVerificationService.send(
                 email,
                 "[서비스명] 비밀번호 재설정 안내",
                 "아래 링크를 클릭하여 비밀번호를 재설정하세요.\n\n" +
                         resetUrl + "\n\n" +
                         "본 링크는 15분 동안 유효합니다."
         );
+
+        if (!sent) {
+            throw new CustomBusinessException(UserErrorCode.EMAIL_SEND_FAIL);
+        }
+
+        return "비밀번호 재설정 이메일이 발송되었습니다.";
     }
 
-    /**
-     * 토큰 유효성 체크
-     */
+    // ---------------------------------------------------------
+    // 비밀번호 재설정
+    // ---------------------------------------------------------
     @Override
-    public boolean isResetTokenValid(String token) {
-        return passwordResetTokenService.validateToken(token) != null;
-    }
-
-    /**
-     * 새 비밀번호 설정 (토큰 기반)
-     */
-    @Override
-    public void resetPassword(String token, String newPassword) {
+    public boolean resetPassword(String token, String newPassword) {
 
         Integer userId = passwordResetTokenService.validateToken(token);
-        if (userId == null) {
-            throw new CustomBusinessException(UserErrorCode.INVALID_OR_EXPIRED_TOKEN);
-        }
-
-        User user = userMapper.findById(userId);
-        if (user == null) {
-            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
-        }
+        if (userId == null) return false;
 
         String encryptedPassword = passwordEncoder.encode(newPassword);
 
-        userMapper.updatePassword(userId, encryptedPassword);
+        int result = userMapper.updatePassword(userId, encryptedPassword);
+        if (result > 0) {
 
-        // 1회성 → 삭제
-        passwordResetTokenService.deleteToken(token);
+            boolean deleted = passwordResetTokenService.deleteToken(token);
+            if (!deleted) {
+                log.warn("Reset token deletion failed: {}", token);
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
-    // -----------------------------
-    // 로그인된 사용자 비밀번호 변경
-    // -----------------------------
+    // ---------------------------------------------------------
+    // 로그인 상태에서 비밀번호 변경
+    // ---------------------------------------------------------
     @Override
-    public void updatePassword(Integer userId, PasswordUpdateRequestDto dto) {
+    public boolean updatePassword(Integer userId, PasswordUpdateRequestDto dto) {
 
         User user = userMapper.findById(userId);
         if (user == null) {
@@ -248,10 +254,176 @@ public class UserServiceImpl implements UserService {
         }
 
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
-            throw new CustomBusinessException(UserErrorCode.INVALID_PASSWORD);
+            return false;
         }
 
-        String encryptedNewPassword = passwordEncoder.encode(dto.getNewPassword());
-        userMapper.updatePassword(userId, encryptedNewPassword);
+        int result = userMapper.updatePassword(userId, passwordEncoder.encode(dto.getNewPassword()));
+        return result > 0;
+    }
+
+    // ---------------------------------------------------------
+    // 사용자 정보 수정
+    // ---------------------------------------------------------
+    @Override
+    public UserResponseDto updateUserInfo(Integer userId, UserUpdateRequestDto dto, MultipartFile image) {
+
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        // 닉네임 중복 검사
+        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
+            User existingUser = userMapper.findByNickname(dto.getNickname());
+            if (existingUser != null && !existingUser.getId().equals(userId)) {
+                throw new CustomBusinessException(UserErrorCode.NICKNAME_DUPLICATE);
+            }
+        }
+
+        int updated = userMapper.updateUserInfo(userId, dto.getName(), dto.getNickname());
+        if (updated <= 0) {
+            throw new CustomBusinessException(UserErrorCode.UPDATE_FAIL);
+        }
+
+        // 이미지 업데이트
+        if (image != null && !image.isEmpty()) {
+            try {
+                String imageUrl = s3Uploader.upload(image, "profile-images/" + userId + "/profile");
+                userMapper.updateUserImage(userId, imageUrl);
+            } catch (IOException e) {
+                throw new CustomBusinessException(UserErrorCode.FILE_SAVE_ERROR);
+            }
+        }
+
+        User updatedUser = userMapper.findById(userId);
+
+        return UserResponseDto.builder()
+                .id(updatedUser.getId())
+                .email(updatedUser.getEmail())
+                .name(updatedUser.getName())
+                .nickname(updatedUser.getNickname())
+                .image(updatedUser.getImage())
+                .grade(updatedUser.getGrade())
+                .role(updatedUser.getRole())
+                .enabled(updatedUser.getEnabled())
+                .build();
+    }
+
+    // ---------------------------------------------------------
+    // 이메일 수정
+    // ---------------------------------------------------------
+    @Override
+    public String updateEmail(Integer userId, String newEmail) {
+
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        if (emailVerificationService.isVerified(newEmail)) {
+            throw new CustomBusinessException(UserErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        User existingUser = userMapper.findByEmail(newEmail);
+        if (existingUser != null && !existingUser.getId().equals(userId)) {
+            throw new CustomBusinessException(UserErrorCode.EMAIL_DUPLICATE);
+        }
+
+        int result = userMapper.updateUserEmail(userId, newEmail);
+        if (result <= 0) {
+            throw new CustomBusinessException(UserErrorCode.UPDATE_FAIL);
+        }
+
+        boolean cleared = emailVerificationService.clearVerification(newEmail);
+        if (!cleared) {
+            log.warn("Failed to clear email verification for {}", newEmail);
+        }
+
+        return newEmail;
+    }
+
+    // ---------------------------------------------------------
+    // 재설정 토큰 유효성 확인
+    // ---------------------------------------------------------
+    @Override
+    public boolean isResetTokenValid(String token) {
+        return passwordResetTokenService.validateToken(token) != null;
+    }
+
+    // ---------------------------------------------------------
+    // 내 정보 조회
+    // ---------------------------------------------------------
+    @Override
+    public UserResponseDto getUserInfo(Integer userId) {
+
+        User user = userMapper.findById(userId);
+
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        return UserResponseDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .nickname(user.getNickname())
+                .image(user.getImage())
+                .grade(user.getGrade())
+                .role(user.getRole())
+                .enabled(user.getEnabled())
+                .build();
+    }
+
+    // ============================================================
+    // 90일 뒤 탈퇴 예약
+    // ============================================================
+    @Override
+    public boolean requestDelete(Integer userId) {
+
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        // 이미 탈퇴 예약 중인지 확인
+        boolean isAlreadyScheduled =
+                user.getDeletedAt() != null &&
+                        !Boolean.TRUE.equals(user.getIsDeleted()); // 🔥 핵심 수정
+
+        if (isAlreadyScheduled) {
+            throw new CustomBusinessException(UserErrorCode.ALREADY_SCHEDULED_DELETE);
+        }
+
+        // 90일 뒤 탈퇴될 예정
+        LocalDateTime deletedAt = LocalDateTime.now().plusDays(90);
+
+        int result = userMapper.scheduleDelete(userId, deletedAt);
+
+        return result > 0;
+    }
+
+    // ============================================================
+    // 탈퇴 신청 복구
+    // ============================================================
+    @Override
+    public boolean restoreUser(Integer userId) {
+
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+
+        // 탈퇴 예약조차 되어있지 않으면 복구 불가
+        if (user.getDeletedAt() == null) {
+            return false;
+        }
+
+        // 이미 90일이 지나 실제 삭제가 예정된 계정
+        if (user.getDeletedAt().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+
+        int result = userMapper.restoreUser(userId);
+        return result > 0;
     }
 }
