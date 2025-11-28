@@ -1,5 +1,6 @@
 package kr.or.kosa.backend.comment.service;
 
+import kr.or.kosa.backend.codeboard.domain.Codeboard;
 import kr.or.kosa.backend.codeboard.mapper.CodeboardMapper;
 import kr.or.kosa.backend.comment.domain.Comment;
 import kr.or.kosa.backend.comment.dto.CommentCreateRequest;
@@ -234,7 +235,7 @@ public class CommentService {
     private Integer getBoardAuthorId(String boardType, Long boardId) {
         return switch (boardType) {
             case "CODEBOARD" -> {
-                CodeBoard codeBoard = codeBoardMapper.selectById(boardId);
+                Codeboard codeBoard = codeBoardMapper.selectById(boardId);
                 if (codeBoard == null) {
                     throw new CustomBusinessException(CommentErrorCode.BOARD_NOT_FOUND);
                 }
