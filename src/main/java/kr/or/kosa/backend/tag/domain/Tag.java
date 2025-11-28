@@ -1,8 +1,14 @@
 package kr.or.kosa.backend.tag.domain;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Data
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Tag {
     private Long tagId;
     private String tagName;

@@ -11,12 +11,23 @@ public interface UserService {
 
     String refresh(String token);
 
-    void logout(String token);
+    boolean logout(String token);
 
-    UserResponseDto getById(Integer id);
+    String sendPasswordResetLink(String email);
 
-    void sendPasswordResetLink(String email);
+    boolean isResetTokenValid(String token);
 
-    void resetPassword(PasswordResetConfirmDto dto);
+    boolean resetPassword(String token, String newPassword);
+
+    boolean updatePassword(Integer userId, PasswordUpdateRequestDto dto);
+
+    UserResponseDto updateUserInfo(Integer userId, UserUpdateRequestDto dto, MultipartFile image);
+
+    String updateEmail(Integer userId, String newEmail);
+
+    UserResponseDto getUserInfo(Integer userId);
+
+    boolean requestDelete(Integer userId);
+
+    boolean restoreUser(Integer userId);
 }
-
