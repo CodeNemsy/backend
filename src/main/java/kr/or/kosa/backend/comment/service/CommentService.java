@@ -16,8 +16,8 @@ import kr.or.kosa.backend.like.service.LikeService;
 import kr.or.kosa.backend.like.domain.ReferenceType;
 import kr.or.kosa.backend.notification.service.NotificationService;
 import kr.or.kosa.backend.notification.domain.NotificationType;
-import kr.or.kosa.backend.user.domain.User;
-import kr.or.kosa.backend.user.mapper.UserMapper;
+import kr.or.kosa.backend.users.domain.Users;
+import kr.or.kosa.backend.users.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -257,11 +257,11 @@ public class CommentService {
             return Collections.emptyMap();
         }
 
-        List<User> users = userMapper.selectUsersByIds(userIds);
+        List<Users> users = userMapper.selectUsersByIds(userIds);
         return users.stream()
                 .collect(Collectors.toMap(
-                        User::getId,
-                        User::getNickname
+                        Users::getId,
+                        Users::getNickname
                 ));
     }
 }

@@ -37,16 +37,23 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        // .requestMatchers(
-                        // "/**"
-                        // )
-                        // .permitAll()
-                        .anyRequest().permitAll());
+                        .requestMatchers(
+                                "/users/login",
+                                "/users/register",
+                                "/users/refresh",
+                                "/users/password/reset/request",
+                                "/users/password/reset/validate",
+                                "/users/password/reset/confirm",
+                                "/email/send",
+                                "/email/verify"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
 
-        // .addFilterBefore(
-        // new JwtAuthenticationFilter(jwtProvider),
-        // UsernamePasswordAuthenticationFilter.class
-        // );
+                .addFilterBefore(
+                        new JwtAuthenticationFilter(jwtProvider),
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
