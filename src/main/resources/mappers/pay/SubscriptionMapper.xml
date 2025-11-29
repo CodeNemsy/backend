@@ -5,17 +5,26 @@
 
 <mapper namespace="kr.or.kosa.backend.pay.repository.SubscriptionMapper">
 
+    <!-- ================== ResultMap ================== -->
     <resultMap id="SubscriptionResultMap"
                type="kr.or.kosa.backend.pay.entity.Subscription">
         <id     column="subscription_id"   property="subscriptionId"/>
         <result column="user_id"           property="userId"/>
         <result column="order_id"          property="orderId"/>
         <result column="subscription_type" property="subscriptionType"/>
-        <result column="start_date"        property="startDate"/>
-        <result column="end_date"          property="endDate"/>
+
+        <!-- DATETIME ↔ LocalDateTime 매핑 -->
+        <result column="start_date"
+                property="startDate"
+                javaType="java.time.LocalDateTime"/>
+        <result column="end_date"
+                property="endDate"
+                javaType="java.time.LocalDateTime"/>
+
         <result column="status"            property="status"/>
     </resultMap>
 
+    <!-- ================== INSERT ================== -->
     <insert id="insertSubscription"
             parameterType="kr.or.kosa.backend.pay.entity.Subscription"
             useGeneratedKeys="true"
@@ -38,7 +47,7 @@
         )
     </insert>
 
-    <!-- 사용자의 ACTIVE 구독 전체 (현재 시각 기준 아직 안 끝난 것만) -->
+    <!-- ================== 특정 유저 ACTIVE 구독 조회 ================== -->
     <select id="findActiveSubscriptionsByUserId"
             resultMap="SubscriptionResultMap">
         SELECT
@@ -56,7 +65,7 @@
         ORDER BY end_date DESC
     </select>
 
-    <!-- orderId로 단건 조회 -->
+    <!-- ================== orderId 로 단건 조회 ================== -->
     <select id="findSubscriptionByOrderId"
             resultMap="SubscriptionResultMap">
         SELECT
@@ -71,7 +80,7 @@
         WHERE order_id = #{orderId}
     </select>
 
-    <!-- 🔥 BASIC ACTIVE 중 가장 최신 한 건 (역시 end_date > NOW() 조건 추가) -->
+    <!-- ================== 최신 ACTIVE BASIC (타입별) 1건 ================== -->
     <select id="findLatestActiveSubscriptionByUserIdAndType"
             resultMap="SubscriptionResultMap">
         SELECT
@@ -91,20 +100,20 @@
         LIMIT 1
     </select>
 
-    <!-- 구독 상태 CANCELED 등으로 변경 -->
+    <!-- ================== 상태 CANCELED 등으로 변경 ================== -->
     <update id="updateSubscriptionStatusToCanceled">
         UPDATE subscriptions
         SET status = #{status}
         WHERE order_id = #{orderId}
     </update>
 
-    <!-- 🔥 추가: 이미 끝난 ACTIVE 구독을 EXPIRED 로 전환 -->
+    <!-- ================== 이미 끝난 ACTIVE → EXPIRED 전환 ================== -->
     <update id="expireSubscriptionsByUserId">
         UPDATE subscriptions
         SET status = 'EXPIRED'
         WHERE user_id = #{userId}
         AND status = 'ACTIVE'
-        AND end_date <= NOW()
+        AND end_date &lt;= NOW()
     </update>
 
 </mapper>
