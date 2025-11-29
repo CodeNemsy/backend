@@ -1,44 +1,52 @@
-package kr.or.kosa.backend.global.util;
+package kr.or.kosa.backend.util;
 
 import kr.or.kosa.backend.auth.github.dto.GitHubTokenResponse;
 import kr.or.kosa.backend.auth.github.dto.GitHubUserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class GitHubApiClient {
 
-    private final WebClient webClient;
+    private final WebClient githubClient = WebClient.builder()
+            .baseUrl("https://github.com")
+            .defaultHeader(HttpHeaders.ACCEPT, "application/vnd.github+json")  // ✅ 수정
+            .build();
 
-    private static final String TOKEN_URL = "https://github.com/login/oauth/access_token";
-    private static final String USER_URL = "https://api.github.com/user";
-
+    /**
+     * GitHub Access Token 요청
+     */
     public GitHubTokenResponse requestAccessToken(String clientId, String clientSecret, String code) {
 
-        Map<String, String> body = Map.of(
-                "client_id", clientId,
-                "client_secret", clientSecret,
-                "code", code
-        );
+        String body = "client_id=" + clientId +
+                "&client_secret=" + clientSecret +
+                "&code=" + code;
 
-        return webClient.post()
-                .uri(TOKEN_URL)
-                .header(HttpHeaders.ACCEPT, "application/json")
+        return githubClient.post()
+                .uri("/login/oauth/access_token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(GitHubTokenResponse.class)
                 .block();
     }
 
+    /**
+     * GitHub 사용자 정보 요청
+     */
     public GitHubUserResponse requestUserInfo(String accessToken) {
-        return webClient.get()
-                .uri(USER_URL)
-                .header("Authorization", "Bearer " + accessToken)
+        return WebClient.builder()
+                .baseUrl("https://api.github.com")
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .defaultHeader(HttpHeaders.ACCEPT, "application/vnd.github+json")
+                .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
+                .build()
+                .get()
+                .uri("/user")
                 .retrieve()
                 .bodyToMono(GitHubUserResponse.class)
                 .block();

@@ -1,11 +1,11 @@
 package kr.or.kosa.backend.auth.github.service;
 
 import kr.or.kosa.backend.auth.github.dto.*;
-import kr.or.kosa.backend.global.util.GitHubApiClient;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
 import kr.or.kosa.backend.users.domain.Users;
 import kr.or.kosa.backend.users.mapper.UserMapper;
 import kr.or.kosa.backend.users.service.UserService;
+import kr.or.kosa.backend.util.GitHubApiClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
