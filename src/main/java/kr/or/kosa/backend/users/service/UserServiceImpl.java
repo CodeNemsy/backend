@@ -114,9 +114,6 @@ public class UserServiceImpl implements UserService {
                 TimeUnit.DAYS
         );
 
-        // 2) DB 저장 (백업)
-        userMapper.updateUserTokens(users.getId(), refreshToken);
-
         UserResponseDto userDto = UserResponseDto.builder()
                 .id(users.getId())
                 .email(users.getEmail())
@@ -155,12 +152,6 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.INVALID_TOKEN);
         }
 
-        // 2) DB 검증
-        String dbToken = userMapper.findRefreshTokenById(userId);
-        if (dbToken == null || !dbToken.equals(refreshToken)) {
-            throw new CustomBusinessException(UserErrorCode.INVALID_TOKEN);
-        }
-
         return jwtProvider.createAccessToken(userId, jwtProvider.getEmail(refreshToken));
     }
 
@@ -179,9 +170,6 @@ public class UserServiceImpl implements UserService {
 
             // 1) Redis refresh 삭제
             redisTemplate.delete(REFRESH_KEY_PREFIX + userId);
-
-            // 2) DB refresh 삭제
-            userMapper.clearRefreshToken(userId);
 
             // AccessToken 블랙리스트 처리
             long expireAt = jwtProvider.getTokenRemainingTime(token);
@@ -440,21 +428,60 @@ public class UserServiceImpl implements UserService {
     @Override
     public Users githubLogin(GitHubUserResponse gitHubUser) {
 
-        Users existing = userMapper.findByEmail(gitHubUser.getEmail());
-        if (existing != null) {
-            return existing;
+        String provider = "github";
+        String providerId = String.valueOf(gitHubUser.getId());
+        String email = gitHubUser.getEmail();  // null 가능
+
+        // -----------------------------------------------------
+        // 1) 이미 SOCIALLOGIN에 연동된 경우 → 바로 로그인
+        // -----------------------------------------------------
+        Users linkedUser = userMapper.findBySocialProvider(provider, providerId);
+        if (linkedUser != null) {
+            return linkedUser;
         }
 
-        Users user = new Users();
-        user.setEmail(gitHubUser.getEmail());
-        user.setName(gitHubUser.getName());
-        user.setNickname(gitHubUser.getLogin());
-        user.setImage(gitHubUser.getAvatar_url());
-        user.setGithubToken(String.valueOf(gitHubUser.getId()));
-        user.setRole("USER");
-        user.setPassword("GITHUB_USER"); // 소셜 로그인은 패스워드 없음
+        // -----------------------------------------------------
+        // 2) 기존 유저가 존재하면 자동 연동 후 로그인
+        // -----------------------------------------------------
+        if (email != null) {
+            Users existingUser = userMapper.findByEmail(email);
+            if (existingUser != null) {
 
-        userMapper.insertGithubUser(user);
-        return user;
+                // 자동 연동
+                userMapper.insertSocialAccount(
+                        existingUser.getId(),
+                        provider,
+                        providerId,
+                        email
+                );
+
+                return existingUser;
+            }
+        }
+
+        // -----------------------------------------------------
+        // 3) 기존 유저도 없으면 → 신규 Users 자동 생성
+        // -----------------------------------------------------
+        Users newUser = new Users();
+        newUser.setEmail(email != null ? email : "github-" + providerId + "@noemail.com");
+        newUser.setName(gitHubUser.getName());
+        newUser.setNickname(gitHubUser.getLogin());
+        newUser.setImage(gitHubUser.getAvatar_url());
+        newUser.setPassword(passwordEncoder.encode("SOCIAL_USER"));  // 의미없는 기본 PW
+        newUser.setRole("ROLE_USER");
+        newUser.setEnabled(true);
+
+        // Users INSERT
+        userMapper.insertUser(newUser);
+
+        // SOCIALLOGIN INSERT
+        userMapper.insertSocialAccount(
+                newUser.getId(),
+                provider,
+                providerId,
+                email
+        );
+
+        return newUser;
     }
 }

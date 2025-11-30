@@ -4,7 +4,7 @@
 
 <mapper namespace="kr.or.kosa.backend.users.mapper.UserMapper">
 
-    <!-- ========= Domain 매핑 ========= -->
+    <!-- ========= Users 매핑 ========= -->
     <resultMap id="UserMap" type="kr.or.kosa.backend.users.domain.Users">
         <id property="id" column="USER_ID"/>
         <result property="email" column="USER_EMAIL"/>
@@ -14,7 +14,6 @@
         <result property="image" column="USER_IMAGE"/>
         <result property="grade" column="USER_GRADE"/>
         <result property="role" column="USER_ROLE"/>
-        <result property="githubToken" column="USER_GITHUBTOKEN"/>
         <result property="refreshToken" column="USER_REFRESHTOKEN"/>
         <result property="isDeleted" column="USER_ISDELETED"/>
         <result property="deletedAt" column="USER_DELETEDAT"/>
@@ -24,27 +23,21 @@
     </resultMap>
 
 
-    <!-- ========= SELECT ========= -->
+    <!-- ========= Users SELECT ========= -->
     <select id="findByEmail" resultMap="UserMap">
-        SELECT *
-        FROM USERS
-        WHERE USER_EMAIL = #{email}
+        SELECT * FROM USERS WHERE USER_EMAIL = #{email}
     </select>
 
     <select id="findByNickname" resultMap="UserMap">
-        SELECT *
-        FROM USERS
-        WHERE USER_NICKNAME = #{nickname}
+        SELECT * FROM USERS WHERE USER_NICKNAME = #{nickname}
     </select>
 
     <select id="findById" resultMap="UserMap">
-        SELECT *
-        FROM USERS
-        WHERE USER_ID = #{id}
+        SELECT * FROM USERS WHERE USER_ID = #{id}
     </select>
 
 
-    <!-- ========= INSERT ========= -->
+    <!-- ========= Users INSERT ========= -->
     <insert id="insertUser"
             parameterType="kr.or.kosa.backend.users.domain.Users"
             useGeneratedKeys="true"
@@ -56,32 +49,14 @@
                  )
     </insert>
 
-    <insert id="insertGithubUser"
-            parameterType="kr.or.kosa.backend.users.domain.Users">
-        INSERT INTO USERS (
-            USER_EMAIL, USER_NAME, USER_NICKNAME, USER_IMAGE,
-            USER_GITHUBTOKEN, USER_ROLE, USER_PW
-        ) VALUES (
-                     #{email}, #{name}, #{nickname}, #{image},
-                     #{githubToken}, #{role}, 'GITHUB_USER'
-                 )
-    </insert>
+
+    <!-- ❌ 삭제됨: USER_GITHUBTOKEN 관련 INSERT/UPDATE -->
 
 
-    <!-- ========= UPDATE ========= -->
-
-    <!-- RefreshToken 저장 -->
+    <!-- ========= Users UPDATE ========= -->
     <update id="updateUserTokens">
         UPDATE USERS
         SET USER_REFRESHTOKEN = #{refreshToken},
-            USER_UPDATEDAT = NOW()
-        WHERE USER_ID = #{id}
-    </update>
-
-    <!-- GitHub OAuth Token 저장 -->
-    <update id="updateGithubToken">
-        UPDATE USERS
-        SET USER_GITHUBTOKEN = #{githubToken},
             USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
@@ -120,17 +95,12 @@
         WHERE USER_ID = #{id}
     </update>
 
-
-    <!-- ========= Refresh Token 관련 ========= -->
-
-    <!-- RefreshToken 조회 -->
     <select id="findRefreshTokenById" resultType="String">
         SELECT USER_REFRESHTOKEN
         FROM USERS
         WHERE USER_ID = #{id}
     </select>
 
-    <!-- RefreshToken 초기화 -->
     <update id="clearRefreshToken">
         UPDATE USERS
         SET USER_REFRESHTOKEN = NULL,
@@ -139,16 +109,41 @@
     </update>
 
 
-    <!-- ========= DELETE ========= -->
+    <!-- ========= Users DELETE ========= -->
     <delete id="deleteUser">
         DELETE FROM USERS
         WHERE USER_ID = #{id}
     </delete>
 
 
-    <!-- ==========================
-         90일 뒤 자동 탈퇴 처리
-    ========================== -->
+    <!-- ========= Social Login (SOCIALLOGIN TABLE) ========= -->
+
+    <!-- ✔ provider + providerId 로 사용자 찾기 -->
+    <select id="findBySocialProvider" resultMap="UserMap">
+        SELECT u.*
+        FROM USERS u
+                 JOIN SOCIALLOGIN s ON u.USER_ID = s.USER_ID
+        WHERE s.SOCIALLOGIN_PROVIDER = #{provider}
+          AND s.SOCIALLOGIN_PROVIDER_ID = #{providerId}
+    </select>
+
+    <!-- ✔ SOCIALLOGIN Insert -->
+    <insert id="insertSocialAccount">
+        INSERT INTO SOCIALLOGIN (
+            USER_ID,
+            SOCIALLOGIN_PROVIDER,
+            SOCIALLOGIN_PROVIDER_ID,
+            SOCIALLOGIN_SOCIAL_EMAIL
+        ) VALUES (
+                     #{userId},
+                     #{provider},
+                     #{providerId},
+                     #{email}
+                 )
+    </insert>
+
+
+    <!-- ========= 90일 뒤 자동 탈퇴 처리 ========= -->
 
     <update id="scheduleDelete">
         UPDATE USERS

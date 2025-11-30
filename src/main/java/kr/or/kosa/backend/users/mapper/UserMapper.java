@@ -20,11 +20,14 @@ public interface UserMapper {
 
     int updatePassword(@Param("id") Long id, @Param("password") String password);
 
-    int updateUserInfo(@Param("id") Long id, @Param("name") String name, @Param("nickname") String nickname);
+    int updateUserInfo(@Param("id") Long id,
+                       @Param("name") String name,
+                       @Param("nickname") String nickname);
 
     int updateUserEmail(@Param("id") Long id, @Param("email") String email);
 
-    int scheduleDelete(@Param("id") Long userId, @Param("deletedAt") LocalDateTime deletedAt);
+    int scheduleDelete(@Param("id") Long userId,
+                       @Param("deletedAt") LocalDateTime deletedAt);
 
     int restoreUser(@Param("id") Long userId);
 
@@ -38,17 +41,26 @@ public interface UserMapper {
 
     List<Users> selectUsersByIds(@Param("userIds") List<Long> userIds);
 
-    int insertGithubUser(Users user);
+    // RefreshToken 저장
+    int updateUserTokens(@Param("id") Long id,
+                         @Param("refreshToken") String refreshToken);
 
-    // 🔥 GitHub OAuth 토큰 저장
-    int updateGithubToken(@Param("id") Long id, @Param("githubToken") String githubToken);
-
-    // 🔥 RefreshToken 저장
-    int updateUserTokens(@Param("id") Long id, @Param("refreshToken") String refreshToken);
-
-    // 🔥 RefreshToken 조회
+    // RefreshToken 조회
     String findRefreshTokenById(@Param("id") Long id);
 
-    // 🔥 RefreshToken 삭제
+    // RefreshToken 삭제
     int clearRefreshToken(@Param("id") Long id);
+
+    // 1) provider + providerId 로 Users 조회
+    Users findBySocialProvider(@Param("provider") String provider,
+                               @Param("providerId") String providerId);
+
+    // 2) SOCIALLOGIN 테이블에 연동 정보 저장
+    int insertSocialAccount(
+            @Param("userId") Long userId,
+            @Param("provider") String provider,
+            @Param("providerId") String providerId,
+            @Param("email") String email
+    );
+
 }

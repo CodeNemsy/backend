@@ -77,13 +77,11 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
     /** 이메일 전송 - void → boolean */
     @Override
     public boolean send(String to, String subject, String text) {
-        try {
-            emailSender.sendEmail(to, subject, text);
-            return true;
-        } catch (Exception e) {
-            log.error("Email sending failed: {}", e.getMessage());
-            return false;
+        boolean sent = emailSender.sendEmail(to, subject, text);
+        if (!sent) {
+            log.error("Email sending failed (returned false)");
         }
+        return sent;
     }
 
     /** 인증 정보 삭제 - void → boolean */
