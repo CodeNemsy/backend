@@ -23,21 +23,38 @@
     </resultMap>
 
 
-    <!-- ========= Users SELECT ========= -->
+    <!-- ========= SELECT ========= -->
+
     <select id="findByEmail" resultMap="UserMap">
-        SELECT * FROM USERS WHERE USER_EMAIL = #{email}
+        SELECT *
+        FROM USERS
+        WHERE USER_EMAIL = #{email}
     </select>
 
     <select id="findByNickname" resultMap="UserMap">
-        SELECT * FROM USERS WHERE USER_NICKNAME = #{nickname}
+        SELECT *
+        FROM USERS
+        WHERE USER_NICKNAME = #{nickname}
     </select>
 
     <select id="findById" resultMap="UserMap">
-        SELECT * FROM USERS WHERE USER_ID = #{id}
+        SELECT *
+        FROM USERS
+        WHERE USER_ID = #{id}
+    </select>
+
+    <select id="selectUsersByIds" resultMap="UserMap">
+        SELECT USER_ID, USER_NICKNAME, USER_EMAIL
+        FROM USERS
+        WHERE USER_ID IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
     </select>
 
 
-    <!-- ========= Users INSERT ========= -->
+    <!-- ========= INSERT ========= -->
+
     <insert id="insertUser"
             parameterType="kr.or.kosa.backend.users.domain.Users"
             useGeneratedKeys="true"
@@ -50,34 +67,28 @@
     </insert>
 
 
-    <!-- ❌ 삭제됨: USER_GITHUBTOKEN 관련 INSERT/UPDATE -->
-
-
-    <!-- ========= Users UPDATE ========= -->
-    <update id="updateUserTokens">
-        UPDATE USERS
-        SET USER_REFRESHTOKEN = #{refreshToken},
-            USER_UPDATEDAT = NOW()
-        WHERE USER_ID = #{id}
-    </update>
-
+    <!-- ========= UPDATE ========= -->
+    <!-- 일반 프로필 변경 -->
     <update id="updateUser" parameterType="kr.or.kosa.backend.users.domain.Users">
         UPDATE USERS
         SET USER_NAME = #{name},
             USER_NICKNAME = #{nickname},
-            USER_IMAGE = #{image}
+            USER_IMAGE = #{image},
+            USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
 
     <update id="updateUserImage">
         UPDATE USERS
-        SET USER_IMAGE = #{image}
+        SET USER_IMAGE = #{image},
+            USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
 
     <update id="updatePassword">
         UPDATE USERS
-        SET USER_PW = #{password}
+        SET USER_PW = #{password},
+            USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
 
@@ -91,34 +102,20 @@
 
     <update id="updateUserEmail">
         UPDATE USERS
-        SET USER_EMAIL = #{email}
-        WHERE USER_ID = #{id}
-    </update>
-
-    <select id="findRefreshTokenById" resultType="String">
-        SELECT USER_REFRESHTOKEN
-        FROM USERS
-        WHERE USER_ID = #{id}
-    </select>
-
-    <update id="clearRefreshToken">
-        UPDATE USERS
-        SET USER_REFRESHTOKEN = NULL,
+        SET USER_EMAIL = #{email},
             USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
 
-
-    <!-- ========= Users DELETE ========= -->
+    <!-- ========= DELETE ========= -->
     <delete id="deleteUser">
         DELETE FROM USERS
         WHERE USER_ID = #{id}
     </delete>
 
 
-    <!-- ========= Social Login (SOCIALLOGIN TABLE) ========= -->
+    <!-- ========= Social Login ========= -->
 
-    <!-- ✔ provider + providerId 로 사용자 찾기 -->
     <select id="findBySocialProvider" resultMap="UserMap">
         SELECT u.*
         FROM USERS u
@@ -127,18 +124,12 @@
           AND s.SOCIALLOGIN_PROVIDER_ID = #{providerId}
     </select>
 
-    <!-- ✔ SOCIALLOGIN Insert -->
     <insert id="insertSocialAccount">
         INSERT INTO SOCIALLOGIN (
-            USER_ID,
-            SOCIALLOGIN_PROVIDER,
-            SOCIALLOGIN_PROVIDER_ID,
-            SOCIALLOGIN_SOCIAL_EMAIL
+            USER_ID, SOCIALLOGIN_PROVIDER,
+            SOCIALLOGIN_PROVIDER_ID, SOCIALLOGIN_SOCIAL_EMAIL
         ) VALUES (
-                     #{userId},
-                     #{provider},
-                     #{providerId},
-                     #{email}
+                     #{userId}, #{provider}, #{providerId}, #{email}
                  )
     </insert>
 
@@ -178,7 +169,8 @@
     <update id="anonymizeUser">
         UPDATE USERS
         SET USER_EMAIL = #{email},
-            USER_NAME = #{name}
+            USER_NAME = #{name},
+            USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}
     </update>
 
