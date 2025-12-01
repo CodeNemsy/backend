@@ -6,22 +6,38 @@
 <mapper namespace="kr.or.kosa.backend.freeboard.mapper.FreeboardMapper">
 
     <!-- 게시글 목록 (페이징) -->
-    <select id="selectPage" resultType="kr.or.kosa.backend.freeboard.domain.Freeboard">
+    <select id="selectPage" resultMap="FreeboardWithTagsMap">
         SELECT
-        FREEBOARD_ID,
-        USER_ID,
-        FREEBOARD_TITLE,
-        FREEBOARD_CONTENT,
-        FREEBOARD_CLICK,
-        FREEBOARD_IMAGE,
-        FREEBOARD_REPRESENT_IMAGE,
-        FREEBOARD_CREATED_AT,
-        FREEBOARD_DELETED_YN
-        FROM FREEBOARD
-        WHERE FREEBOARD_DELETED_YN = 'N'
-        ORDER BY FREEBOARD_ID DESC
+        f.FREEBOARD_ID,
+        f.USER_ID,
+        f.FREEBOARD_TITLE,
+        f.FREEBOARD_CONTENT,
+        f.FREEBOARD_CLICK,
+        f.FREEBOARD_REPRESENT_IMAGE,
+        f.FREEBOARD_CREATED_AT,
+        t.TAG_NAME
+        FROM FREEBOARD f
+        LEFT JOIN FREEBOARD_TAG ft ON f.FREEBOARD_ID = ft.FREEBOARD_ID
+        LEFT JOIN TAG t ON ft.TAG_ID = t.TAG_ID
+        ORDER BY f.FREEBOARD_ID DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
+
+    <!-- 태그 불러오는 resultMap -->
+    <resultMap id="FreeboardWithTagsMap" type="kr.or.kosa.backend.freeboard.domain.Freeboard">
+        <id property="freeboardId" column="FREEBOARD_ID"/>
+
+        <result property="userId" column="USER_ID"/>
+        <result property="freeboardTitle" column="FREEBOARD_TITLE"/>
+        <result property="freeboardContent" column="FREEBOARD_CONTENT"/>
+        <result property="freeboardClick" column="FREEBOARD_CLICK"/>
+        <result property="freeboardRepresentImage" column="FREEBOARD_REPRESENT_IMAGE"/>
+        <result property="freeboardCreatedAt" column="FREEBOARD_CREATED_AT"/>
+
+        <collection property="tags" ofType="java.lang.String">
+            <result column="TAG_NAME"/>
+        </collection>
+    </resultMap>
 
     <!-- 상세 조회 -->
     <select id="selectById" parameterType="long" resultType="kr.or.kosa.backend.freeboard.domain.Freeboard">
