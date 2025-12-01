@@ -26,25 +26,25 @@
     <!-- ========= SELECT ========= -->
     <select id="findByEmail" resultMap="UserMap">
         SELECT *
-        FROM `user`
+        FROM USERS
         WHERE email = #{email}
     </select>
 
     <select id="findByNickname" resultMap="UserMap">
         SELECT *
-        FROM `user`
+        FROM USERS
         WHERE nickname = #{nickname}
     </select>
 
     <select id="findById" resultMap="UserMap">
         SELECT *
-        FROM `user`
+        FROM USERS
         WHERE id = #{id}
     </select>
 
     <select id="selectUsersByIds" resultMap="UserMap">
         SELECT id, nickname, email
-        FROM `user`
+        FROM USERS
         WHERE id IN
         <foreach collection="userIds" item="userId" open="(" separator="," close=")">
             #{userId}
@@ -56,7 +56,7 @@
             parameterType="kr.or.kosa.backend.user.domain.User"
             useGeneratedKeys="true"
             keyProperty="id">
-        INSERT INTO `user` (
+        INSERT INTO USERS (
         email, password, name, nickname, image
         ) VALUES (
         #{email}, #{password}, #{name}, #{nickname}, #{image}
@@ -65,7 +65,7 @@
 
     <insert id="insertGithubUser"
             parameterType="kr.or.kosa.backend.user.domain.User">
-        INSERT INTO `user` (
+        INSERT INTO USERS (
         email, name, nickname, image,
         github_token, role, password
         ) VALUES (
@@ -76,7 +76,7 @@
 
     <!-- ========= UPDATE ========= -->
     <update id="updateUser" parameterType="kr.or.kosa.backend.user.domain.User">
-        UPDATE `user`
+        UPDATE USERS
         SET name = #{name},
         nickname = #{nickname},
         image = #{image}
@@ -84,25 +84,25 @@
     </update>
 
     <update id="updateGithubToken">
-        UPDATE `user`
+        UPDATE USERS
         SET github_token = #{githubToken}
         WHERE id = #{id}
     </update>
 
     <update id="updateUserImage">
-        UPDATE `user`
+        UPDATE USERS
         SET image = #{image}
         WHERE id = #{id}
     </update>
 
     <update id="updatePassword">
-        UPDATE `user`
+        UPDATE USERS
         SET password = #{password}
         WHERE id = #{id}
     </update>
 
     <update id="updateUserInfo">
-        UPDATE `user`
+        UPDATE USERS
         SET name = #{name},
         nickname = #{nickname},
         updated_at = NOW()
@@ -110,21 +110,21 @@
     </update>
 
     <update id="updateUserEmail">
-        UPDATE `user`
+        UPDATE USERS
         SET email = #{email}
         WHERE id = #{id}
     </update>
 
     <!-- refresh token 보관 -->
     <update id="updateRefreshToken">
-        UPDATE `user`
+        UPDATE USERS
         SET refresh_token = #{token}
         WHERE id = #{id}
     </update>
 
     <!-- ========= DELETE ========= -->
     <delete id="deleteUser">
-        DELETE FROM `user`
+        DELETE FROM USERS
         WHERE id = #{id}
     </delete>
 
@@ -134,7 +134,7 @@
 
     <!-- 1) 탈퇴 예약 -->
     <update id="scheduleDelete">
-        UPDATE `user`
+        UPDATE USERS
         SET deleted_at = #{deletedAt},
         is_deleted = 0
         WHERE id = #{id}
@@ -142,7 +142,7 @@
 
     <!-- 2) 탈퇴 복구 -->
     <update id="restoreUser">
-        UPDATE `user`
+        UPDATE USERS
         SET deleted_at = NULL
         WHERE id = #{id}
     </update>
@@ -151,7 +151,7 @@
     <select id="findUsersToDelete" resultMap="UserMap">
         <![CDATA[
         SELECT *
-        FROM `user`
+        FROM USERS
         WHERE is_deleted = 0
           AND deleted_at IS NOT NULL
           AND deleted_at < #{now}
@@ -160,14 +160,14 @@
 
     <!-- 4) Soft Delete 처리 -->
     <update id="softDeleteUser">
-        UPDATE `user`
+        UPDATE USERS
         SET is_deleted = 1
         WHERE id = #{id}
     </update>
 
     <!-- 5) 개인정보 익명화 -->
     <update id="anonymizeUser">
-        UPDATE `user`
+        UPDATE USERS
         SET email = #{email},
         name = #{name}
         WHERE id = #{id}
