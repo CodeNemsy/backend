@@ -100,13 +100,6 @@
         WHERE USER_ID = #{id}
     </update>
 
-    <update id="updateUserEmail">
-        UPDATE USERS
-        SET USER_EMAIL = #{email},
-            USER_UPDATEDAT = NOW()
-        WHERE USER_ID = #{id}
-    </update>
-
     <!-- ========= DELETE ========= -->
     <delete id="deleteUser">
         DELETE FROM USERS

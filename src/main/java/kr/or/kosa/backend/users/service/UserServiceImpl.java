@@ -313,39 +313,6 @@ public class UserServiceImpl implements UserService {
     }
 
     // ---------------------------------------------------------
-    // 이메일 수정
-    // ---------------------------------------------------------
-    @Override
-    public String updateEmail(Long userId, String newEmail) {
-
-        Users users = userMapper.findById(userId);
-        if (users == null) {
-            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
-        }
-
-        if (emailVerificationService.isVerified(newEmail)) {
-            throw new CustomBusinessException(UserErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        Users existingUsers = userMapper.findByEmail(newEmail);
-        if (existingUsers != null && !existingUsers.getId().equals(userId)) {
-            throw new CustomBusinessException(UserErrorCode.EMAIL_DUPLICATE);
-        }
-
-        int result = userMapper.updateUserEmail(userId, newEmail);
-        if (result <= 0) {
-            throw new CustomBusinessException(UserErrorCode.UPDATE_FAIL);
-        }
-
-        boolean cleared = emailVerificationService.clearVerification(newEmail);
-        if (!cleared) {
-            log.warn("Failed to clear email verification for {}", newEmail);
-        }
-
-        return newEmail;
-    }
-
-    // ---------------------------------------------------------
     // 재설정 토큰 유효성 확인
     // ---------------------------------------------------------
     @Override

@@ -25,8 +25,6 @@ public interface UserService {
 
     UserResponseDto updateUserInfo(Long userId, UserUpdateRequestDto dto, MultipartFile image);
 
-    String updateEmail(Long userId, String newEmail);
-
     UserResponseDto getUserInfo(Long userId);
 
     boolean requestDelete(Long userId);
