@@ -94,7 +94,8 @@
 
     <update id="updateUserInfo">
         UPDATE USERS
-        SET USER_NAME = #{name},
+        SET
+            USER_NAME = #{name},
             USER_NICKNAME = #{nickname},
             USER_UPDATEDAT = NOW()
         WHERE USER_ID = #{id}

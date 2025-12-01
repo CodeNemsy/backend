@@ -10,9 +10,11 @@ import java.util.List;
 @Mapper
 public interface UserMapper {
 
-    Users findByEmail(@Param("email") String email);
-    Users findByNickname(@Param("nickname") String nickname);
-    Users findById(@Param("id") Long id);
+    Users findById(Long id);
+
+    Users findByEmail(String email);
+
+    Users findByNickname(String nickname);
 
     int insertUser(Users users);
 
@@ -20,34 +22,40 @@ public interface UserMapper {
 
     int updatePassword(@Param("id") Long id, @Param("password") String password);
 
-    int updateUserInfo(@Param("id") Long id,
-                       @Param("name") String name,
-                       @Param("nickname") String nickname);
+    int updateUserInfo(
+            @Param("id") Long id,
+            @Param("name") String name,
+            @Param("nickname") String nickname
+    );
 
-    int scheduleDelete(@Param("id") Long userId,
-                       @Param("deletedAt") LocalDateTime deletedAt);
+    int scheduleDelete(@Param("id") Long id, @Param("deletedAt") LocalDateTime deletedAt);
 
-    int restoreUser(@Param("id") Long userId);
+    int restoreUser(Long id);
 
-    List<Users> findUsersToDelete(@Param("now") LocalDateTime now);
+    Users findBySocialProvider(
+            @Param("provider") String provider,
+            @Param("providerId") String providerId
+    );
 
-    int softDeleteUser(@Param("id") Long userId);
-
-    int anonymizeUser(@Param("id") Long userId,
-                      @Param("email") String email,
-                      @Param("name") String name);
-
-    List<Users> selectUsersByIds(@Param("userIds") List<Long> userIds);
-
-    // 1) provider + providerId 로 Users 조회
-    Users findBySocialProvider(@Param("provider") String provider,
-                               @Param("providerId") String providerId);
-
-    // 2) SOCIALLOGIN 테이블에 연동 정보 저장
     int insertSocialAccount(
             @Param("userId") Long userId,
             @Param("provider") String provider,
             @Param("providerId") String providerId,
             @Param("email") String email
+    );
+
+    List<Users> selectUsersByIds(@Param("userIds") List<Long> userIds);
+
+    // 1) 자동 삭제 대상 유저 조회
+    List<Users> findUsersToDelete(@Param("now") LocalDateTime now);
+
+    // 2) 소프트 삭제(유저 표시만 삭제)
+    int softDeleteUser(@Param("id") Long id);
+
+    // 3) GDPR 목적 또는 완전 삭제를 위한 익명화
+    int anonymizeUser(
+            @Param("id") Long id,
+            @Param("email") String email,
+            @Param("name") String name
     );
 }

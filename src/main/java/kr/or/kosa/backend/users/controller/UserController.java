@@ -161,11 +161,15 @@ public class UserController {
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> updateMyInfo(
             @AuthenticationPrincipal JwtUserDetails user,
-            @ModelAttribute UserUpdateRequestDto dto,
-            @RequestPart(value = "image", required = false) MultipartFile image
+            @ModelAttribute UserUpdateRequestDto dto,   // ⬅ name, nickname
+            @RequestPart(value = "image", required = false) MultipartFile image // ⬅ 파일
     ) {
 
-        UserResponseDto updated = userService.updateUserInfo(user.id(), dto, image);
+        UserResponseDto updated = userService.updateUserInfo(
+                user.id(),
+                dto,
+                image
+        );
 
         return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, true,

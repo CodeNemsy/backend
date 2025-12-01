@@ -275,40 +275,53 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        // 닉네임 중복 검사
-        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
-            Users existingUsers = userMapper.findByNickname(dto.getNickname());
-            if (existingUsers != null && !existingUsers.getId().equals(userId)) {
+        // ⚡ 빈 문자열 처리 (name, nickname)
+        String name = (dto.getName() != null && dto.getName().trim().isEmpty())
+                ? null : dto.getName();
+
+        String nickname = (dto.getNickname() != null && dto.getNickname().trim().isEmpty())
+                ? null : dto.getNickname();
+
+        // ⚡ 닉네임 중복 체크
+        if (nickname != null) {
+            Users existing = userMapper.findByNickname(nickname);
+            if (existing != null && !existing.getId().equals(userId)) {
                 throw new CustomBusinessException(UserErrorCode.NICKNAME_DUPLICATE);
             }
         }
 
-        int updated = userMapper.updateUserInfo(userId, dto.getName(), dto.getNickname());
-        if (updated <= 0) {
-            throw new CustomBusinessException(UserErrorCode.UPDATE_FAIL);
-        }
+        // ⚡ 새로운 이름/닉네임 적용
+        String newName = (name != null) ? name : users.getName();
+        String newNickname = (nickname != null) ? nickname : users.getNickname();
 
-        // 이미지 업데이트
+        // ⚡ 이미지 파일 처리
+        String newImage = users.getImage(); // 기본: 기존 이미지 유지
+
         if (image != null && !image.isEmpty()) {
             try {
-                String imageUrl = s3Uploader.upload(image, "profile-images/" + userId + "/profile");
-                userMapper.updateUserImage(userId, imageUrl);
+                String uploadedImageUrl = s3Uploader.upload(image, "profile");
+                newImage = uploadedImageUrl;
             } catch (IOException e) {
-                throw new CustomBusinessException(UserErrorCode.FILE_SAVE_ERROR);
+                throw new CustomBusinessException(UserErrorCode.FILE_UPLOAD_FAILED);
             }
         }
 
-        Users updatedUsers = userMapper.findById(userId);
+        // ⚡ DB 업데이트
+        userMapper.updateUserInfo(userId, newName, newNickname);
+        userMapper.updateUserImage(userId, newImage);
+
+        // ⚡ 변경된 정보 다시 조회
+        Users updated = userMapper.findById(userId);
 
         return UserResponseDto.builder()
-                .id(updatedUsers.getId())
-                .email(updatedUsers.getEmail())
-                .name(updatedUsers.getName())
-                .nickname(updatedUsers.getNickname())
-                .image(updatedUsers.getImage())
-                .grade(updatedUsers.getGrade())
-                .role(updatedUsers.getRole())
-                .enabled(updatedUsers.getEnabled())
+                .id(updated.getId())
+                .email(updated.getEmail())
+                .name(updated.getName())
+                .nickname(updated.getNickname())
+                .image(updated.getImage())
+                .grade(updated.getGrade())
+                .role(updated.getRole())
+                .enabled(updated.getEnabled())
                 .build();
     }
 
