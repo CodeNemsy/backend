@@ -13,7 +13,4 @@ public interface EmailVerificationService {
 
     /** 이메일 전송 */
     boolean send(String to, String subject, String text);
-
-    /** 인증 정보 삭제 */
-    boolean clearVerification(String email);
 }

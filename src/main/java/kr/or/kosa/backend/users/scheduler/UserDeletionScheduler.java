@@ -27,18 +27,20 @@ public class UserDeletionScheduler {
 
         for (Users u : users) {
 
+            Long userId = u.getUserId(); // 필드명 변경
+
             // Soft delete 적용
-            if (userMapper.softDeleteUser(u.getId()) <= 0) {
-                log.warn("Soft Delete failed for userId={}", u.getId());
+            if (userMapper.softDeleteUser(userId) <= 0) {
+                log.warn("Soft Delete failed for userId={}", userId);
             }
 
             // 개인정보 익명화
             if (userMapper.anonymizeUser(
-                    u.getId(),
-                    "deleted_" + u.getId() + "@deleted.com",
+                    userId,
+                    "deleted_" + userId + "@deleted.com",
                     "탈퇴회원"
             ) <= 0) {
-                log.warn("Anonymize failed for userId={}", u.getId());
+                log.warn("Anonymize failed for userId={}", userId);
             }
         }
     }

@@ -10,31 +10,31 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Users {
 
-    private Long id;
-    private String email;
-    private String password;
-    private String name;
-    private String nickname;
-    private String image;
-    private Integer grade;
-    private String role;
-    private String refreshToken;
-    private Boolean isDeleted;
-    private LocalDateTime deletedAt;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private Boolean enabled;
+    private Long userId;
+    private String userEmail;
+    private String userPw;
+    private String userName;
+    private String userNickname;
+    private String userImage;
+    private Integer userGrade;
+    private String userRole;        // ENUM → String으로 매핑
+    private Boolean userIsdeleted;
+    private LocalDateTime userDeletedat;
+    private LocalDateTime userCreatedat;
+    private LocalDateTime userUpdatedat;
+    private Boolean userEnabled;
+    private Boolean userIssubscribed;
 
     public UserResponseDto toDto() {
         return UserResponseDto.builder()
-                .id(this.id)
-                .email(this.email)
-                .name(this.name)
-                .nickname(this.nickname)
-                .image(this.image)
-                .grade(this.grade)
-                .role(this.role)
-                .enabled(this.enabled)
+                .userId(this.userId)
+                .userEmail(this.userEmail)
+                .userName(this.userName)
+                .userNickname(this.userNickname)
+                .userImage(this.userImage)
+                .userGrade(this.userGrade)
+                .userRole(this.userRole)
+                .userEnabled(this.userEnabled)
                 .build();
     }
 }

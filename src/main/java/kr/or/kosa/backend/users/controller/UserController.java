@@ -117,7 +117,7 @@ public class UserController {
             @RequestBody PasswordResetConfirmRequest dto
     ) {
 
-        boolean result = userService.resetPassword(dto.getToken(), dto.getNewPassword());
+        boolean result = userService.resetPassword(dto.getToken(), dto.getNewUserPw());
 
         return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, result,

@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -44,37 +45,37 @@ public class UserServiceImpl implements UserService {
     @Override
     public Long register(UserRegisterRequestDto dto, MultipartFile imageFile) {
 
-        if (!emailVerificationService.isVerified(dto.getEmail())) {
+        if (!emailVerificationService.isVerified(dto.getUserEmail())) {
             throw new CustomBusinessException(UserErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        if (userMapper.findByEmail(dto.getEmail()) != null) {
+        if (userMapper.findByEmail(dto.getUserEmail()) != null) {
             throw new CustomBusinessException(UserErrorCode.EMAIL_DUPLICATE);
         }
 
-        if (userMapper.findByNickname(dto.getNickname()) != null) {
+        if (userMapper.findByNickname(dto.getUserNickname()) != null) {
             throw new CustomBusinessException(UserErrorCode.NICKNAME_DUPLICATE);
         }
 
         Users users = new Users();
-        users.setEmail(dto.getEmail());
-        users.setPassword(passwordEncoder.encode(dto.getPassword()));
-        users.setName(dto.getName());
-        users.setNickname(dto.getNickname());
-        users.setImage(null);
-        users.setEnabled(true);
+        users.setUserEmail(dto.getUserEmail());
+        users.setUserPw(passwordEncoder.encode(dto.getUserPw()));
+        users.setUserName(dto.getUserName());
+        users.setUserNickname(dto.getUserNickname());
+        users.setUserImage(null);
+        users.setUserEnabled(true);
 
         int result = userMapper.insertUser(users);
         if (result <= 0) {
             throw new CustomBusinessException(UserErrorCode.USER_CREATE_FAIL);
         }
 
-        Long userId = users.getId();
+        Long userId = users.getUserId();
 
         // 프로필 이미지 업로드
         String imageUrl;
         if (imageFile != null && !imageFile.isEmpty()) {
-            String folderPath = "profile-images/" + dto.getNickname() + "/profile";
+            String folderPath = "profile-images/" + dto.getUserNickname() + "/profile";
             try {
                 imageUrl = s3Uploader.upload(imageFile, folderPath);
             } catch (IOException e) {
@@ -94,35 +95,34 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserLoginResponseDto login(UserLoginRequestDto dto) {
 
-        Users users = userMapper.findByEmail(dto.getEmail());
+        Users users = userMapper.findByEmail(dto.getUserEmail());
         if (users == null) {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        if (!passwordEncoder.matches(dto.getPassword(), users.getPassword())) {
+        if (!passwordEncoder.matches(dto.getUserPw(), users.getUserPw())) {
             throw new CustomBusinessException(UserErrorCode.INVALID_PASSWORD);
         }
 
-        String accessToken = jwtProvider.createAccessToken(users.getId(), users.getEmail());
-        String refreshToken = jwtProvider.createRefreshToken(users.getId(), users.getEmail());
+        String accessToken = jwtProvider.createAccessToken(users.getUserId(), users.getUserEmail());
+        String refreshToken = jwtProvider.createRefreshToken(users.getUserId(), users.getUserEmail());
 
-        // 1) Redis 저장
         redisTemplate.opsForValue().set(
-                REFRESH_KEY_PREFIX + users.getId(),
+                REFRESH_KEY_PREFIX + users.getUserId(),
                 refreshToken,
                 REFRESH_TOKEN_EXPIRE_DAYS,
                 TimeUnit.DAYS
         );
 
         UserResponseDto userDto = UserResponseDto.builder()
-                .id(users.getId())
-                .email(users.getEmail())
-                .name(users.getName())
-                .nickname(users.getNickname())
-                .image(users.getImage())
-                .grade(users.getGrade())
-                .role(users.getRole())
-                .enabled(users.getEnabled())
+                .userId(users.getUserId())
+                .userEmail(users.getUserEmail())
+                .userName(users.getUserName())
+                .userNickname(users.getUserNickname())
+                .userImage(users.getUserImage())
+                .userGrade(users.getUserGrade())
+                .userRole(users.getUserRole())
+                .userEnabled(users.getUserEnabled())
                 .build();
 
         return UserLoginResponseDto.builder()
@@ -202,7 +202,7 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        String token = passwordResetTokenService.createResetToken(users.getId());
+        String token = passwordResetTokenService.createResetToken(users.getUserId());
         String resetUrl = "http://localhost:5173/reset-password?token=" + token;
 
         boolean sent = emailVerificationService.send(
@@ -256,11 +256,12 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        if (!passwordEncoder.matches(dto.getCurrentPassword(), users.getPassword())) {
+        // 🔥 수정된 부분 — DTO 필드명에 맞게 변경
+        if (!passwordEncoder.matches(dto.getCurrentUserPw(), users.getUserPw())) {
             return false;
         }
 
-        int result = userMapper.updatePassword(userId, passwordEncoder.encode(dto.getNewPassword()));
+        int result = userMapper.updatePassword(userId, passwordEncoder.encode(dto.getNewUserPw()));
         return result > 0;
     }
 
@@ -276,31 +277,30 @@ public class UserServiceImpl implements UserService {
         }
 
         // ⚡ 빈 문자열 처리 (name, nickname)
-        String name = (dto.getName() != null && dto.getName().trim().isEmpty())
-                ? null : dto.getName();
+        String name = (dto.getUserName() != null && dto.getUserName().trim().isEmpty())
+                ? null : dto.getUserName();
 
-        String nickname = (dto.getNickname() != null && dto.getNickname().trim().isEmpty())
-                ? null : dto.getNickname();
+        String nickname = (dto.getUserNickname() != null && dto.getUserNickname().trim().isEmpty())
+                ? null : dto.getUserNickname();
 
         // ⚡ 닉네임 중복 체크
         if (nickname != null) {
             Users existing = userMapper.findByNickname(nickname);
-            if (existing != null && !existing.getId().equals(userId)) {
+            if (existing != null && !existing.getUserId().equals(userId)) {
                 throw new CustomBusinessException(UserErrorCode.NICKNAME_DUPLICATE);
             }
         }
 
         // ⚡ 새로운 이름/닉네임 적용
-        String newName = (name != null) ? name : users.getName();
-        String newNickname = (nickname != null) ? nickname : users.getNickname();
+        String newName = (name != null) ? name : users.getUserName();
+        String newNickname = (nickname != null) ? nickname : users.getUserNickname();
 
         // ⚡ 이미지 파일 처리
-        String newImage = users.getImage(); // 기본: 기존 이미지 유지
+        String newImage = users.getUserImage(); // 기본: 기존 이미지 유지
 
         if (image != null && !image.isEmpty()) {
             try {
-                String uploadedImageUrl = s3Uploader.upload(image, "profile");
-                newImage = uploadedImageUrl;
+                newImage = s3Uploader.upload(image, "profile");
             } catch (IOException e) {
                 throw new CustomBusinessException(UserErrorCode.FILE_UPLOAD_FAILED);
             }
@@ -314,14 +314,14 @@ public class UserServiceImpl implements UserService {
         Users updated = userMapper.findById(userId);
 
         return UserResponseDto.builder()
-                .id(updated.getId())
-                .email(updated.getEmail())
-                .name(updated.getName())
-                .nickname(updated.getNickname())
-                .image(updated.getImage())
-                .grade(updated.getGrade())
-                .role(updated.getRole())
-                .enabled(updated.getEnabled())
+                .userId(updated.getUserId())
+                .userEmail(updated.getUserEmail())
+                .userName(updated.getUserName())
+                .userNickname(updated.getUserNickname())
+                .userImage(updated.getUserImage())
+                .userGrade(updated.getUserGrade())
+                .userRole(updated.getUserRole())
+                .userEnabled(updated.getUserEnabled())
                 .build();
     }
 
@@ -346,14 +346,14 @@ public class UserServiceImpl implements UserService {
         }
 
         return UserResponseDto.builder()
-                .id(users.getId())
-                .email(users.getEmail())
-                .name(users.getName())
-                .nickname(users.getNickname())
-                .image(users.getImage())
-                .grade(users.getGrade())
-                .role(users.getRole())
-                .enabled(users.getEnabled())
+                .userId(users.getUserId())
+                .userEmail(users.getUserEmail())
+                .userName(users.getUserName())
+                .userNickname(users.getUserNickname())
+                .userImage(users.getUserImage())
+                .userGrade(users.getUserGrade())
+                .userRole(users.getUserRole())
+                .userEnabled(users.getUserEnabled())
                 .build();
     }
 
@@ -368,7 +368,7 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        if (Boolean.TRUE.equals(users.getIsDeleted())) {
+        if (Boolean.TRUE.equals(users.getUserIsdeleted())) {
             throw new CustomBusinessException(UserErrorCode.ALREADY_SCHEDULED_DELETE);
         }
 
@@ -389,11 +389,11 @@ public class UserServiceImpl implements UserService {
             throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
         }
 
-        if (!Boolean.TRUE.equals(users.getIsDeleted())) {
+        if (!Boolean.TRUE.equals(users.getUserIsdeleted())) {
             return false;
         }
 
-        if (users.getDeletedAt() != null && users.getDeletedAt().isBefore(LocalDateTime.now())) {
+        if (users.getUserDeletedat() != null && users.getUserDeletedat().isBefore(LocalDateTime.now())) {
             return false;
         }
 
@@ -429,7 +429,7 @@ public class UserServiceImpl implements UserService {
 
                 // 자동 연동
                 userMapper.insertSocialAccount(
-                        existingUser.getId(),
+                        existingUser.getUserId(),
                         provider,
                         providerId,
                         email
@@ -442,21 +442,22 @@ public class UserServiceImpl implements UserService {
         // -----------------------------------------------------
         // 3) 기존 유저도 없으면 → 신규 Users 자동 생성
         // -----------------------------------------------------
+        String randomPassword = UUID.randomUUID().toString();
         Users newUser = new Users();
-        newUser.setEmail(email != null ? email : "github-" + providerId + "@noemail.com");
-        newUser.setName(gitHubUser.getName());
-        newUser.setNickname(gitHubUser.getLogin());
-        newUser.setImage(gitHubUser.getAvatar_url());
-        newUser.setPassword(passwordEncoder.encode("SOCIAL_USER"));  // 의미없는 기본 PW
-        newUser.setRole("ROLE_USER");
-        newUser.setEnabled(true);
+        newUser.setUserEmail(email != null ? email : "github-" + providerId + "@noemail.com");
+        newUser.setUserName(gitHubUser.getName());
+        newUser.setUserNickname(gitHubUser.getLogin());
+        newUser.setUserImage(gitHubUser.getAvatar_url());
+        newUser.setUserPw(passwordEncoder.encode(randomPassword));
+        newUser.setUserRole("ROLE_USER");
+        newUser.setUserEnabled(true);
 
         // Users INSERT
         userMapper.insertUser(newUser);
 
         // SOCIALLOGIN INSERT
         userMapper.insertSocialAccount(
-                newUser.getId(),
+                newUser.getUserId(),
                 provider,
                 providerId,
                 email

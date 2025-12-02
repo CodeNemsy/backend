@@ -105,7 +105,7 @@ public class CommentService {
 
         // 사용자 닉네임 조회
         Users user = userMapper.findById(userId);
-        String userNickname = user != null ? user.getNickname() : null;
+        String userNickname = user != null ? user.getUserNickname() : null;
 
         return CommentResponse.builder()
                 .commentId(savedComment.getCommentId())
@@ -282,8 +282,8 @@ public class CommentService {
         List<Users> users = userMapper.selectUsersByIds(userIds);
         return users.stream()
                 .collect(Collectors.toMap(
-                        Users::getId,
-                        Users::getNickname
+                        Users::getUserId,
+                        Users::getUserNickname
                 ));
     }
 }

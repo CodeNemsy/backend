@@ -40,12 +40,12 @@ public class GitHubLoginController {
             Users user = userService.githubLogin(gitHubUser);
 
             // 3) JWT 발급
-            String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail());
-            String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getEmail());
+            String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getUserEmail());
+            String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getUserEmail());
 
             // 4) Redis에 refresh 저장
             redisTemplate.opsForValue().set(
-                    REFRESH_KEY_PREFIX + user.getId(),
+                    REFRESH_KEY_PREFIX + user.getUserId(),
                     refreshToken,
                     REFRESH_TOKEN_EXPIRE_DAYS,
                     TimeUnit.DAYS

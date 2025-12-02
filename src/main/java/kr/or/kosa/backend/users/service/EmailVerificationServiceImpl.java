@@ -83,17 +83,4 @@ public class EmailVerificationServiceImpl implements EmailVerificationService {
         }
         return sent;
     }
-
-    /** 인증 정보 삭제 - void → boolean */
-    @Override
-    public boolean clearVerification(String email) {
-        try {
-            redisTemplate.delete(VERIFY_CODE_PREFIX + email);
-            redisTemplate.delete(VERIFIED_PREFIX + email);
-            return true;
-        } catch (Exception e) {
-            log.error("Failed to clear verification: {}", e.getMessage());
-            return false;
-        }
-    }
 }
