@@ -30,4 +30,16 @@ public class InsightsController {
         List<UserCodePatternDTO> patterns = insightsService.getUserCodePatterns(userId);
         return ResponseEntity.ok(patterns);
     }
+
+    @GetMapping("/trends/{userId}")
+    public ResponseEntity<java.util.Map<String, Object>> getPatternTrends(@PathVariable Long userId) {
+        return ResponseEntity.ok(insightsService.getPatternTrends(userId));
+    }
+
+    @GetMapping("/patterns/{userId}/detail")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getPatternDetails(
+            @PathVariable Long userId,
+            @RequestParam String pattern) {
+        return ResponseEntity.ok(insightsService.getPatternDetails(userId, pattern));
+    }
 }
