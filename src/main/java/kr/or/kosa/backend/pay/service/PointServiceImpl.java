@@ -17,7 +17,7 @@ public class PointServiceImpl implements PointService {
     private final PointMapper pointMapper;
 
     @Override
-    public void usePoint(String userId, BigDecimal usePoint, String orderId) {
+    public void usePoint(Long userId, BigDecimal usePoint, String orderId) {
 
         if (usePoint == null || usePoint.compareTo(BigDecimal.ZERO) <= 0) {
             return;
@@ -50,7 +50,7 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
-    public void refundPoint(String userId, BigDecimal usedPoint, String orderId, String reason) {
+    public void refundPoint(Long userId, BigDecimal usedPoint, String orderId, String reason) {
 
         if (usedPoint == null || usedPoint.compareTo(BigDecimal.ZERO) <= 0) {
             return;
@@ -77,7 +77,7 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
-    public void validatePointBalance(String userId, BigDecimal usePoint) {
+    public void validatePointBalance(Long userId, BigDecimal usePoint) {
         if (usePoint == null || usePoint.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }

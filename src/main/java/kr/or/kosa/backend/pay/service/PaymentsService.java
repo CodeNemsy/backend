@@ -19,13 +19,13 @@ public interface PaymentsService {
     Optional<Payments> getPaymentByOrderId(String orderId);
 
     // 사용자의 활성화된 구독 목록 조회
-    List<Subscription> getActiveSubscriptions(String userId);
+    List<Subscription> getActiveSubscriptions(Long userId);
 
     // 4. 결제 취소 및 환불 처리
     Payments cancelPayment(String paymentKey, String cancelReason);
 
     // 🔥 추가: BASIC → PRO 업그레이드 시 추가 결제 금액 계산
-    UpgradeQuoteResponse getUpgradeQuote(String userId, String targetPlanCode);
+    UpgradeQuoteResponse getUpgradeQuote(Long userId, String targetPlanCode);
 
 
 }

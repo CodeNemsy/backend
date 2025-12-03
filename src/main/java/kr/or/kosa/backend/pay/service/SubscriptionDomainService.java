@@ -37,8 +37,8 @@ public class SubscriptionDomainService {
     /**
      * 구독 만료 처리 + ACTIVE 목록 조회
      */
-    public List<Subscription> getActiveSubscriptions(String userId) {
-        if (userId == null || userId.isBlank()) {
+    public List<Subscription> getActiveSubscriptions(Long userId) {
+        if (userId == null) {
             return List.of();
         }
         subscriptionMapper.expireSubscriptionsByUserId(userId);
@@ -52,9 +52,9 @@ public class SubscriptionDomainService {
         Payments payment = paymentsMapper.findPaymentByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("결제 정보를 찾을 수 없습니다."));
 
-        String userId = payment.getUserId();
-        if (userId == null || userId.isEmpty()) {
-            userId = payment.getCustomerName();
+        Long userId = payment.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("userId가 없는 결제는 구독을 부여할 수 없습니다.");
         }
 
         String planCode = payment.getPlanCode();
@@ -66,7 +66,6 @@ public class SubscriptionDomainService {
 
         // BASIC → PRO 업그레이드 (남은 기간 승계 로직)
         if (userId != null
-                && !userId.isEmpty()
                 && "PRO".equalsIgnoreCase(planCode)) {
 
             Optional<Subscription> basicOpt =
@@ -132,9 +131,9 @@ public class SubscriptionDomainService {
     /**
      * BASIC → PRO 업그레이드 견적 계산 (기존 로직 그대로 이동)
      */
-    public UpgradeQuoteResponse getUpgradeQuote(String userId, String targetPlanCode) {
+    public UpgradeQuoteResponse getUpgradeQuote(Long userId, String targetPlanCode) {
 
-        if (userId == null || userId.isBlank()) {
+        if (userId == null) {
             throw new IllegalArgumentException("userId는 필수입니다.");
         }
         if (targetPlanCode == null || targetPlanCode.isBlank()) {
