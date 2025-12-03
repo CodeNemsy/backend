@@ -140,9 +140,9 @@ public class UserController {
         ));
     }
 
-    // ============================================================================
-    // 내 정보 조회
-    // ============================================================================
+    /**
+     * 내 정보 조회
+     */
     @GetMapping("/me")
     public ResponseEntity<UserResponseDto> getMyInfo(
             @AuthenticationPrincipal JwtUserDetails user
@@ -151,9 +151,9 @@ public class UserController {
         return ResponseEntity.ok(dto);
     }
 
-    // ============================================================================
-    // 일반 정보 수정 (이름 / 닉네임 / 프로필 사진)
-    // ============================================================================
+    /**
+     * 일반 정보 수정 (이름 / 닉네임 / 프로필 사진)
+     */
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> updateMyInfo(
             @AuthenticationPrincipal JwtUserDetails user,
@@ -174,10 +174,9 @@ public class UserController {
         ));
     }
 
-    // ============================================================================
-    // 탈퇴 신청 (90일 뒤 삭제)
-    // ============================================================================
-
+    /**
+     * 탈퇴 신청 (90일 뒤 삭제)
+     */
     @DeleteMapping("/me")
     public ResponseEntity<Map<String, Object>> requestDelete(
             @AuthenticationPrincipal JwtUserDetails user
@@ -192,9 +191,9 @@ public class UserController {
         ));
     }
 
-    // ============================================================================
-    // 탈퇴 복구
-    // ============================================================================
+    /**
+     * 탈퇴 복구
+     */
     @PutMapping("/me/restore")
     public ResponseEntity<Map<String, Object>> restoreUser(
             @AuthenticationPrincipal JwtUserDetails user
