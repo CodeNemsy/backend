@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class PointHistory {
 
     private Long id;               // AUTO_INCREMENT PK
-    private String userId;
+    private Long userId;
     private BigDecimal changeAmount;      // + 적립, - 사용
     private String type;           // EARN / USE / REFUND 등
     private String paymentOrderId; // 어느 결제와 묶였는지 (nullable)

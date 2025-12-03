@@ -30,6 +30,6 @@ public interface PaymentsMapper {
     int updatePaymentForReady(Payments payments);
 
     // 최근 결제 N건 (환불 남용 체크)
-    List<Payments> findRecentPaymentsByUser(@Param("userId") String userId,
+    List<Payments> findRecentPaymentsByUser(@Param("userId") Long userId,
                                             @Param("limit") int limit);
 }

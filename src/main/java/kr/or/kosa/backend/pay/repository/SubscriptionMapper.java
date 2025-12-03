@@ -12,7 +12,7 @@ public interface SubscriptionMapper {
 
     int insertSubscription(Subscription subscription);
 
-    List<Subscription> findActiveSubscriptionsByUserId(@Param("userId") String userId);
+    List<Subscription> findActiveSubscriptionsByUserId(@Param("userId") Long userId);
 
     Optional<Subscription> findSubscriptionByOrderId(@Param("orderId") String orderId);
 
@@ -20,9 +20,9 @@ public interface SubscriptionMapper {
                                            @Param("status") String status);
 
     Optional<Subscription> findLatestActiveSubscriptionByUserIdAndType(
-            @Param("userId") String userId,
+            @Param("userId") Long userId,
             @Param("subscriptionType") String subscriptionType
     );
 
-    int expireSubscriptionsByUserId(@Param("userId") String userId);
+    int expireSubscriptionsByUserId(@Param("userId") Long userId);
 }

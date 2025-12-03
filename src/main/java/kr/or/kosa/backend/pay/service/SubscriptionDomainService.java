@@ -37,8 +37,8 @@ public class SubscriptionDomainService {
     /**
      * 구독 만료 처리 + ACTIVE 목록 조회
      */
-    public List<Subscription> getActiveSubscriptions(String userId) {
-        if (userId == null || userId.isBlank()) {
+    public List<Subscription> getActiveSubscriptions(Long userId) {
+        if (userId == null) {
             return List.of();
         }
         subscriptionMapper.expireSubscriptionsByUserId(userId);
@@ -46,15 +46,15 @@ public class SubscriptionDomainService {
     }
 
     /**
-     * 결제(orderId) 기반으로 구독 부여 / 업그레이드 처리
+     * 결제(orderId) 기준으로 구독권 부여 / 업그레이드 처리
      */
     public void grantSubscriptionToUser(String orderId) {
         Payments payment = paymentsMapper.findPaymentByOrderId(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("결제 정보를 찾을 수 없습니다."));
 
-        String userId = payment.getUserId();
-        if (userId == null || userId.isEmpty()) {
-            userId = payment.getCustomerName();
+        Long userId = payment.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("userId가 없는 결제는 구독을 부여할 수 없습니다.");
         }
 
         String planCode = payment.getPlanCode();
@@ -64,9 +64,8 @@ public class SubscriptionDomainService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // BASIC -> PRO 업그레이드 (기간 승계 로직)
+        // BASIC → PRO 업그레이드 (남은 기간 승계 로직)
         if (userId != null
-                && !userId.isEmpty()
                 && "PRO".equalsIgnoreCase(planCode)) {
 
             Optional<Subscription> basicOpt =
@@ -84,7 +83,7 @@ public class SubscriptionDomainService {
                             "CANCELED"
                     );
 
-                    // PRO 구독 생성 (기존 기간 승계)
+                    // PRO 구독 생성 (남은 기간 그대로)
                     Subscription proSubscription = Subscription.builder()
                             .userId(userId)
                             .orderId(orderId)
@@ -96,7 +95,7 @@ public class SubscriptionDomainService {
 
                     int inserted = subscriptionMapper.insertSubscription(proSubscription);
                     if (inserted != 1) {
-                        throw new RuntimeException("구독 업그레이드 정보 DB 저장 실패");
+                        throw new RuntimeException("구독권 업그레이드 정보 DB 저장 실패");
                     }
 
                     return;
@@ -118,32 +117,32 @@ public class SubscriptionDomainService {
 
         int result = subscriptionMapper.insertSubscription(newSubscription);
         if (result != 1) {
-            throw new RuntimeException("구독 정보 DB 저장 실패");
+            throw new RuntimeException("구독권 정보 DB 저장 실패");
         }
     }
 
     /**
-     * 주문기반 구독 취소 (환불 시 호출)
+     * 주문기반 구독 취소 (환불시 호출)
      */
     public void cancelSubscriptionByOrderId(String orderId) {
         subscriptionMapper.updateSubscriptionStatusToCanceled(orderId, "CANCELED");
     }
 
     /**
-     * BASIC -> PRO 업그레이드 견적 계산
+     * BASIC → PRO 업그레이드 견적 계산 (기존 로직 그대로 이동)
      */
-    public UpgradeQuoteResponse getUpgradeQuote(String userId, String targetPlanCode) {
+    public UpgradeQuoteResponse getUpgradeQuote(Long userId, String targetPlanCode) {
 
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("userId가 필수입니다.");
+        if (userId == null) {
+            throw new IllegalArgumentException("userId는 필수입니다.");
         }
         if (targetPlanCode == null || targetPlanCode.isBlank()) {
-            throw new IllegalArgumentException("planCode가 필수입니다.");
+            throw new IllegalArgumentException("planCode는 필수입니다.");
         }
 
         String normalizedTarget = targetPlanCode.toUpperCase();
 
-        // BASIC -> PRO가 아닌 경우: 업그레이드 아님
+        // BASIC → PRO가 아닌 경우: 업그레이드 아님
         if (!"PRO".equals(normalizedTarget)) {
             return UpgradeQuoteResponse.builder()
                     .upgrade(false)
@@ -156,6 +155,7 @@ public class SubscriptionDomainService {
                     .build();
         }
 
+        // 최신 ACTIVE BASIC 구독 1개 조회
         return subscriptionMapper.findLatestActiveSubscriptionByUserIdAndType(userId, "BASIC")
                 .map(basicSub -> {
 
@@ -163,7 +163,7 @@ public class SubscriptionDomainService {
                     LocalDateTime start = basicSub.getStartDate();
                     LocalDateTime end = basicSub.getEndDate();
 
-                    // 이미 끝난 BASIC이면 업그레이드 아님
+                    // 이미 끝난 BASIC이면 업그레이드 없음
                     if (end == null || !end.isAfter(now)) {
                         return UpgradeQuoteResponse.builder()
                                 .upgrade(false)
@@ -225,7 +225,7 @@ public class SubscriptionDomainService {
 
                     BigDecimal extraAmount = diff
                             .multiply(ratio)
-                            .setScale(0, RoundingMode.CEILING);   // 소수단위 올림
+                            .setScale(0, RoundingMode.CEILING);   // 원단위 올림
 
                     String endStr = end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
@@ -253,23 +253,26 @@ public class SubscriptionDomainService {
     }
 
     /**
-     * 플랜 코드별 가격 조회 (활성 플랜만 허용)
+     * 플랜 코드 → 월 요금
+     * FREE 는 0, DB에 없거나 비활성화면 0 리턴 (기존 정책 유지)
      */
     public BigDecimal getMonthlyPrice(String planCode) {
         if (planCode == null || planCode.isBlank()) {
-            throw new IllegalArgumentException("planCode is required");
+            return BigDecimal.ZERO;
         }
 
         String code = planCode.toUpperCase();
 
+        // FREE 플랜은 실제 결제 없음
         if ("FREE".equals(code)) {
             return BigDecimal.ZERO;
         }
 
-        SubscriptionPlan plan = subscriptionPlanMapper.findActiveByPlanCode(code);
+        SubscriptionPlan plan =
+                subscriptionPlanMapper.findActiveByPlanCode(code);
 
-        if (plan == null || !plan.isActive()) {
-            throw new IllegalArgumentException("Inactive or invalid plan code: " + code);
+        if (plan == null) {
+            return BigDecimal.ZERO;
         }
 
         return plan.getMonthlyFee();
