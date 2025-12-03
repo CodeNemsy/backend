@@ -31,17 +31,18 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
-                                "/users/**",
-                                "/email/**",
-                                "/auth/**"
+                                "/",                       // 헬스 등
+                                "/auth/github/**",        // 소셜 로그인 콜백
+                                "/users/register",        // 회원가입
+                                "/users/login",           // 로그인
+                                "/email/**",              // 이메일 인증 관련
+                                "/swagger-ui/**", "/v3/api-docs/**" // 문서(있다면)
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -52,6 +53,32 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+
+
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//
+//        http
+//                .cors(Customizer.withDefaults())
+//                .csrf(AbstractHttpConfigurer::disable)
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//
+//                .authorizeHttpRequests(auth -> auth
+//                        // .requestMatchers(
+//                        // "/**"
+//                        // )
+//                        // .permitAll()
+//                        .anyRequest().permitAll());
+//
+//        // .addFilterBefore(
+//        // new JwtAuthenticationFilter(jwtProvider),
+//        // UsernamePasswordAuthenticationFilter.class
+//        // );
+//
+//        return http.build();
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

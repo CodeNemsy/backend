@@ -2,8 +2,11 @@ package kr.or.kosa.backend.pay.controller;
 
 import kr.or.kosa.backend.pay.entity.UserPoint;
 import kr.or.kosa.backend.pay.repository.PointMapper;
+import kr.or.kosa.backend.security.jwt.JwtUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -25,10 +28,13 @@ public class UserPointController {
      */
     @GetMapping("/me/points")
     public ResponseEntity<Map<String, Object>> getMyPoints(
-            @RequestParam(value = "userId", required = false) String userId
+            @AuthenticationPrincipal JwtUserDetails user
     ) {
-        String finalUserId =
-                (userId == null || userId.isBlank()) ? "TEST_USER_001" : userId;
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("code", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+        }
+        Long finalUserId = user.id();
 
         UserPoint userPoint = pointMapper.findUserPointByUserId(finalUserId)
                 .orElse(UserPoint.builder()

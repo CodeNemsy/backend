@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @ToString
 public class UserPoint {
 
-    private String userId;       // PK
+    private Long userId;       // PK
     private BigDecimal balance;         // 현재 잔액
     private LocalDateTime updatedAt; // 마지막 변경 시각
 }

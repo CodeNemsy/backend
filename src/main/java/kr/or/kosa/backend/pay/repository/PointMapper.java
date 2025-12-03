@@ -11,20 +11,20 @@ import java.util.Optional;
 @Mapper
 public interface PointMapper {
 
-    Optional<UserPoint> findUserPointByUserId(@Param("userId") String userId);
+    Optional<UserPoint> findUserPointByUserId(@Param("userId") Long userId);
 
     int insertUserPoint(UserPoint userPoint);
 
     /**
      * 포인트 사용 (잔액 차감). 잔액 부족 시 0 row 업데이트되도록 구현.
      */
-    int usePoint(@Param("userId") String userId,
+    int usePoint(@Param("userId") Long userId,
                  @Param("usePoint") BigDecimal usePoint);
 
     /**
      * 포인트 환불(복구).
      */
-    int refundPoint(@Param("userId") String userId,
+    int refundPoint(@Param("userId") Long userId,
                     @Param("refundPoint") BigDecimal refundPoint);
 
     int insertPointHistory(PointHistory history);
