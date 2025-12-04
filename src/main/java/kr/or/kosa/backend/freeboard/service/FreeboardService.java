@@ -54,9 +54,8 @@ public class FreeboardService {
         }
 
         List<String> tags = tagService.getFreeboardTags(id);
-        freeboard.setTags(tags);
 
-        return freeboard;
+        return freeboard.withTags(tags);
     }
 
     @Transactional
