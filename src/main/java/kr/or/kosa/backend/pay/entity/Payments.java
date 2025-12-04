@@ -17,7 +17,7 @@ public class Payments {
     private String orderId;
 
     // 실제 로그인한 유저의 PK(아이디 등)
-    private String userId;
+    private Long userId;
 
     // 구독 플랜 코드 (FREE / BASIC / PRO 등)
     private String planCode;

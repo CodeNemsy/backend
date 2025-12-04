@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class Subscription {
 
     private Long subscriptionId;
-    private String userId;
+    private Long userId;
     private String orderId;          // Payments.orderId 와 연결
     private String subscriptionType; // FREE / BASIC / PRO 등
     private LocalDateTime startDate;

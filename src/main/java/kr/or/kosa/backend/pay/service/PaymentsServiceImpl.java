@@ -40,7 +40,7 @@ public class PaymentsServiceImpl implements PaymentsService {
     public Payments savePayment(Payments payments) {
 
         // 0) 유저/주문 기본 검증 + orderId 세팅
-        String userId = validateUserAndInitOrderId(payments);
+        Long userId = validateUserAndInitOrderId(payments);
 
         // 최근 환불 이력에 따른 차단
         if (isUserInRefundBan(userId)) {
@@ -70,7 +70,7 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     @Override
     @Transactional
-    public List<Subscription> getActiveSubscriptions(String userId) {
+    public List<Subscription> getActiveSubscriptions(Long userId) {
         return subscriptionDomainService.getActiveSubscriptions(userId);
     }
 
@@ -118,10 +118,9 @@ public class PaymentsServiceImpl implements PaymentsService {
         paymentsMapper.updatePaymentStatus(confirmedPayment);
 
         // 포인트 실제 차감
-        String userId = existingPayment.getUserId();
+        Long userId = existingPayment.getUserId();
         BigDecimal usedPoint = nvl(existingPayment.getUsedPoint());
-        if (userId != null && !userId.isEmpty()
-                && usedPoint.compareTo(BigDecimal.ZERO) > 0) {
+        if (userId != null && usedPoint.compareTo(BigDecimal.ZERO) > 0) {
             pointService.usePoint(userId, usedPoint, orderId);
         }
 
@@ -134,7 +133,7 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UpgradeQuoteResponse getUpgradeQuote(String userId, String targetPlanCode) {
+    public UpgradeQuoteResponse getUpgradeQuote(Long userId, String targetPlanCode) {
         return subscriptionDomainService.getUpgradeQuote(userId, targetPlanCode);
     }
 
@@ -155,21 +154,27 @@ public class PaymentsServiceImpl implements PaymentsService {
                     "결제 완료 상태에서만 환불할 수 있습니다. (현재 상태: " + paymentToCancel.getStatus() + ")");
         }
 
-        LocalDateTime requestedAt = paymentToCancel.getRequestedAt();
-        if (requestedAt.isBefore(LocalDateTime.now().minusDays(7))) {
-            throw new IllegalArgumentException("결제 후 7일이 지난 건은 환불할 수 없습니다.");
+        // ?? ?? ?? 7? ??? ?? ?? (??? READY ???? ??)
+        LocalDateTime approvalTime = paymentToCancel.getApprovedAt();
+        if (approvalTime == null) {
+            approvalTime = paymentToCancel.getRequestedAt();
+        }
+        if (approvalTime == null) {
+            throw new IllegalStateException("?? ?? ??? ?? ? ????.");
+        }
+        if (approvalTime.isBefore(LocalDateTime.now().minusDays(7))) {
+            throw new IllegalArgumentException("?? ? 7?? ?? ??? ??????.");
         }
 
-        // 토스 환불 API 호출
+        // 토스 취소 API 호출
         String newStatus = tossPaymentsClient.cancelPayment(paymentKey, cancelReason);
 
         paymentsMapper.updatePaymentStatusToCanceled(paymentToCancel.getOrderId(), newStatus);
         subscriptionDomainService.cancelSubscriptionByOrderId(paymentToCancel.getOrderId());
 
-        String userId = paymentToCancel.getUserId();
+        Long userId = paymentToCancel.getUserId();
         BigDecimal usedPoint = nvl(paymentToCancel.getUsedPoint());
-        if (userId != null && !userId.isEmpty()
-                && usedPoint.compareTo(BigDecimal.ZERO) > 0) {
+        if (userId != null && usedPoint.compareTo(BigDecimal.ZERO) > 0) {
             pointService.refundPoint(userId, usedPoint, paymentToCancel.getOrderId(), cancelReason);
         }
 
@@ -179,13 +184,13 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     // ================== 역할별 private 메소드 ==================
 
-    private String validateUserAndInitOrderId(Payments payments) {
-        String userId = payments.getUserId();
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException("결제를 진행하려면 userId가 필요합니다.");
+    private Long validateUserAndInitOrderId(Payments payments) {
+        Long userId = payments.getUserId();
+        if (userId == null) {
+            throw new IllegalArgumentException("??? ????? userId? ?????.");
         }
 
-        // orderId 없으면 서버에서 생성
+        // orderId ??? ???? ??
         if (payments.getOrderId() == null || payments.getOrderId().isBlank()) {
             String newOrderId = "ORD-" + System.currentTimeMillis()
                     + "-" + UUID.randomUUID().toString().substring(0, 8);
@@ -194,11 +199,12 @@ public class PaymentsServiceImpl implements PaymentsService {
         return userId;
     }
 
+
     /**
      * 금액/포인트 정규화 + 유효성 검사 + 포인트 잔액 검증
      */
-    
-    private boolean normalizeAmountsAndValidate(Payments payments, String userId) {
+
+    private boolean normalizeAmountsAndValidate(Payments payments, Long userId) {
 
         BigDecimal clientAmount   = nvl(payments.getAmount());          // ????? ??? ?? ?? ??
         BigDecimal originalAmount = nvl(payments.getOriginalAmount());  // ?? ?? ??
@@ -254,7 +260,7 @@ public class PaymentsServiceImpl implements PaymentsService {
     }
 
 
-    private BigDecimal getUpgradeExtraAmountIfApplicable(String userId, String planCode) {
+    private BigDecimal getUpgradeExtraAmountIfApplicable(Long userId, String planCode) {
         if (planCode == null || userId == null) {
             return null;
         }
@@ -353,7 +359,7 @@ public class PaymentsServiceImpl implements PaymentsService {
     /**
      * 포인트 전액 결제 플로우 처리
      */
-    private void handlePointOnlyFlow(String userId, Payments persisted) {
+    private void handlePointOnlyFlow(Long userId, Payments persisted) {
 
         BigDecimal usedPoint = nvl(persisted.getUsedPoint());
 
@@ -382,7 +388,7 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     // ================== 공통 유틸 ==================
 
-    private boolean isUserInRefundBan(String userId) {
+    private boolean isUserInRefundBan(Long userId) {
         List<Payments> recent = paymentsMapper.findRecentPaymentsByUser(userId, 2);
         if (recent == null || recent.size() < 2) {
             return false;

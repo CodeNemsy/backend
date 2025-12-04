@@ -4,8 +4,10 @@ import kr.or.kosa.backend.pay.dto.UpgradeQuoteResponse;
 import kr.or.kosa.backend.pay.entity.Payments;
 import kr.or.kosa.backend.pay.entity.Subscription;
 import kr.or.kosa.backend.pay.service.PaymentsService;
+import kr.or.kosa.backend.security.jwt.JwtUserDetails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
@@ -40,9 +42,16 @@ public class PaymentsController {
      * }
      */
     @PostMapping("/ready")
-    public ResponseEntity<Object> createPaymentReady(@RequestBody Payments payments) {
+    public ResponseEntity<Object> createPaymentReady(@AuthenticationPrincipal JwtUserDetails user,
+                                                     @RequestBody Payments payments) {
 
         try {
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("code", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+            }
+            payments.setUserId(user.id());
+
             System.out.println("### [Ready] 요청 시작");
             System.out.println(" - orderId          : " + payments.getOrderId());
             System.out.println(" - userId           : " + payments.getUserId());
@@ -128,10 +137,14 @@ public class PaymentsController {
     /**
      * 3. 특정 사용자의 활성 구독 목록 조회
      */
-    @GetMapping("/subscriptions/{userId}")
-    public ResponseEntity<?> getSubscriptions(@PathVariable String userId) {
+    @GetMapping("/subscriptions/me")
+    public ResponseEntity<?> getSubscriptions(@AuthenticationPrincipal JwtUserDetails user) {
         try {
-            List<Subscription> subscriptions = paymentsService.getActiveSubscriptions(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("code", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+            }
+            List<Subscription> subscriptions = paymentsService.getActiveSubscriptions(user.id());
 
             // NPE 방지용
             if (subscriptions == null) {
@@ -191,11 +204,15 @@ public class PaymentsController {
      */
     @GetMapping("/upgrade-quote")
     public ResponseEntity<?> getUpgradeQuote(
-            @RequestParam String userId,
+            @AuthenticationPrincipal JwtUserDetails user,
             @RequestParam String planCode
     ) {
         try {
-            UpgradeQuoteResponse quote = paymentsService.getUpgradeQuote(userId, planCode);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("code", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+            }
+            UpgradeQuoteResponse quote = paymentsService.getUpgradeQuote(user.id(), planCode);
             return ResponseEntity.ok(quote);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
