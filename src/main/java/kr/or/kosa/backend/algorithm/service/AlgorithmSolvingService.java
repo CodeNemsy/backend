@@ -10,6 +10,7 @@ import kr.or.kosa.backend.algorithm.dto.enums.GithubCommitStatus;
 import kr.or.kosa.backend.algorithm.dto.enums.JudgeResult;
 import kr.or.kosa.backend.algorithm.dto.enums.LanguageType;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemType;
+import kr.or.kosa.backend.algorithm.dto.enums.SolveMode;
 import kr.or.kosa.backend.algorithm.dto.*;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmSubmissionMapper;
@@ -366,8 +367,9 @@ public class AlgorithmSolvingService {
                 .startSolving(request.getStartTime())
                 .endSolving(request.getEndTime())
                 .solvingDurationSeconds(solvingDuration)
-                .focusSessionId(request.getFocusSessionId())
-                .eyetracked(request.getFocusSessionId() != null)
+                // 풀이 모드 및 모니터링 세션 (focusSessionId, eyetracked 제거됨)
+                .solveMode(request.getSolveMode() != null ? request.getSolveMode() : SolveMode.BASIC)
+                .monitoringSessionId(request.getMonitoringSessionId())
                 .githubCommitRequested(request.getRequestGithubCommit() != null && request.getRequestGithubCommit())
                 .githubCommitStatus(GithubCommitStatus.NONE)
                 .isShared(false)
@@ -419,7 +421,9 @@ public class AlgorithmSolvingService {
                 .aiFeedbackStatus(
                         submission.getAiFeedbackStatus() != null ? submission.getAiFeedbackStatus().name() : "PENDING")
                 .aiScore(submission.getAiScore())
-                .focusScore(submission.getFocusScore())
+                // focusScore 제거됨 - 모니터링은 점수에 미반영
+                .solveMode(submission.getSolveMode() != null ? submission.getSolveMode().name() : "BASIC")
+                .monitoringSessionId(submission.getMonitoringSessionId())
                 .timeEfficiencyScore(submission.getTimeEfficiencyScore())
                 .finalScore(submission.getFinalScore())
                 .scoreBreakdown(createScoreBreakdown(submission))
@@ -445,7 +449,7 @@ public class AlgorithmSolvingService {
                 .aiScore(submission.getAiScore() != null ? submission.getAiScore() : BigDecimal.ZERO)
                 .timeScore(submission.getTimeEfficiencyScore() != null ? submission.getTimeEfficiencyScore()
                         : BigDecimal.ZERO)
-                .focusScore(submission.getFocusScore() != null ? submission.getFocusScore() : BigDecimal.ZERO)
+                // focusScore 제거됨 - 모니터링은 점수에 미반영
                 .scoreWeights("Judge(40%) + AI(30%) + Time(30%)")
                 .build();
     }
