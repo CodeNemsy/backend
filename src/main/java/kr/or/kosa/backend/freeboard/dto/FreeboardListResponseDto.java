@@ -1,4 +1,3 @@
-
 package kr.or.kosa.backend.freeboard.dto;
 
 import lombok.AllArgsConstructor;
@@ -21,6 +20,8 @@ public class FreeboardListResponseDto {
     private String freeboardSummary;
     private String freeboardRepresentImage;
     private Long freeboardClick;
+    private Integer likeCount;
+    private Integer commentCount;
     private List<String> tags;
     private LocalDateTime freeboardCreatedAt;
 }
