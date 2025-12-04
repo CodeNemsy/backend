@@ -37,5 +37,5 @@ public interface CommentMapper {
 
     // 특정 사용자의 댓글인지 확인
     boolean existsByCommentIdAndUserId(@Param("commentId") Long commentId,
-                                       @Param("userId") Integer userId);
+                                       @Param("userId") Long userId);
 }

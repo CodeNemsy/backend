@@ -11,6 +11,7 @@ import kr.or.kosa.backend.comment.exception.CommentErrorCode;
 import kr.or.kosa.backend.comment.mapper.CommentMapper;
 import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
 import kr.or.kosa.backend.freeboard.domain.Freeboard;
+import kr.or.kosa.backend.freeboard.dto.FreeboardDetailResponseDto;
 import kr.or.kosa.backend.freeboard.mapper.FreeboardMapper;
 import kr.or.kosa.backend.like.service.LikeService;
 import kr.or.kosa.backend.like.domain.ReferenceType;
@@ -256,7 +257,7 @@ public class CommentService {
                 yield codeBoard.getUserId();
             }
             case "FREEBOARD" -> {
-                Freeboard freeBoard = freeboardMapper.selectById(boardId);
+                FreeboardDetailResponseDto freeBoard = freeboardMapper.selectById(boardId);
                 if (freeBoard == null) {
                     throw new CustomBusinessException(CommentErrorCode.BOARD_NOT_FOUND);
                 }

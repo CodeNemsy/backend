@@ -1,5 +1,7 @@
 package kr.or.kosa.backend.freeboard.mapper;
 
+import kr.or.kosa.backend.freeboard.dto.FreeboardDetailResponseDto;
+import kr.or.kosa.backend.freeboard.dto.FreeboardListResponseDto;
 import org.apache.ibatis.annotations.Mapper;
 import java.util.List;
 import kr.or.kosa.backend.freeboard.domain.Freeboard;
@@ -9,10 +11,10 @@ import org.apache.ibatis.annotations.Param;
 public interface FreeboardMapper {
 
     // 특정 페이지의 게시글 목록
-    List<Freeboard> selectPage(@Param("offset") int offset, @Param("size") int size);
+    List<FreeboardListResponseDto> selectPage(@Param("offset") int offset, @Param("size") int size);
 
     // 게시글 상세 조회
-    Freeboard selectById(Long id);
+    FreeboardDetailResponseDto selectById(Long id);
 
     // 게시글 작성
     int insert(Freeboard board);

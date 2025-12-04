@@ -1,9 +1,6 @@
 package kr.or.kosa.backend.freeboard.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,13 +9,17 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FreeboardListDto {
+public class FreeboardDetailResponseDto {
     private Long freeboardId;
     private Long userId;
+    private String userNickname;
     private String freeboardTitle;
-    private String freeboardSummary;          // 미리보기용 요약
-    private String freeboardRepresentImage;
+    private String freeboardContent;
     private Long freeboardClick;
-    private List<String> tags;
+    private String freeboardImage;
+    private String freeboardRepresentImage;
     private LocalDateTime freeboardCreatedAt;
+
+    @Setter
+    private List<String> tags;
 }
