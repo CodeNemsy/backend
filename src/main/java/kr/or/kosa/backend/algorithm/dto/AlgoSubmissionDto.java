@@ -4,6 +4,7 @@ import kr.or.kosa.backend.algorithm.dto.enums.JudgeResult;
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackStatus;
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackType;
 import kr.or.kosa.backend.algorithm.dto.enums.GithubCommitStatus;
+import kr.or.kosa.backend.algorithm.dto.enums.SolveMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,11 @@ import java.math.BigDecimal;
 /**
  * 알고리즘 제출 DTO
  * 데이터베이스 테이블: ALGO_SUBMISSIONS
+ *
+ * 변경사항:
+ * - focusScore, focusSessionId, eyetracked 제거 (모니터링이 점수에 미반영)
+ * - solveMode 추가: BASIC(자유 풀이) vs FOCUS(집중 모드)
+ * - monitoringSessionId 추가: FOCUS 모드에서 모니터링 세션 연결
  */
 @Data
 @Builder
@@ -43,8 +49,11 @@ public class AlgoSubmissionDto {
     private AiFeedbackStatus aiFeedbackStatus;
     private AiFeedbackType aiFeedbackType;
 
-    // 점수 관련
-    private BigDecimal focusScore;
+    // 풀이 모드 및 모니터링
+    private SolveMode solveMode;
+    private String monitoringSessionId;
+
+    // 점수 관련 (focusScore 제거됨 - 모니터링은 점수에 미반영)
     private BigDecimal aiScore;
     private BigDecimal timeEfficiencyScore;
     private BigDecimal finalScore;
@@ -54,10 +63,6 @@ public class AlgoSubmissionDto {
     private LocalDateTime startSolving;
     private LocalDateTime endSolving;
     private Integer solvingDurationSeconds;
-
-    // Eye Tracking 관련
-    private String focusSessionId;
-    private Boolean eyetracked;
 
     // GitHub 연동 관련
     private Boolean githubCommitRequested;
