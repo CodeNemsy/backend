@@ -1,4 +1,4 @@
-package kr.or.kosa.backend.algorithm.domain;
+package kr.or.kosa.backend.algorithm.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 집중 요약 DTO
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FocusSummary {
+public class FocusSummaryDto {
     private Long summaryId;
     private String sessionId;
     private Long userId;

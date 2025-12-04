@@ -1,4 +1,4 @@
-package kr.or.kosa.backend.algorithm.domain;
+package kr.or.kosa.backend.algorithm.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 위반 로그 DTO
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ViolationLog {
+public class ViolationLogDto {
     private Long violationId;
     private String sessionId;
     private Long userId;

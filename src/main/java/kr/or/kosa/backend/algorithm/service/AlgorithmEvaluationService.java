@@ -1,11 +1,12 @@
 package kr.or.kosa.backend.algorithm.service;
 
-import kr.or.kosa.backend.algorithm.domain.AlgoProblem;
-import kr.or.kosa.backend.algorithm.domain.AlgoSubmission;
+import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
+import kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto;
 import kr.or.kosa.backend.algorithm.dto.AICodeEvaluationResult;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationParams;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationResult;
 import kr.or.kosa.backend.algorithm.dto.SubmissionAiStatusDto;
+import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackStatus;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmSubmissionMapper;
 
 import lombok.*;
@@ -34,7 +35,7 @@ public class AlgorithmEvaluationService {
     @Transactional
     public CompletableFuture<Void> processEvaluationAsync(
             Long submissionId,
-            AlgoProblem problem,
+            AlgoProblemDto problem,
             Judge0Service.JudgeResultDto judgeResult
     ) {
 
@@ -43,7 +44,7 @@ public class AlgorithmEvaluationService {
 
         try {
             // 1. 제출 조회
-            AlgoSubmission submission = submissionMapper.selectSubmissionById(submissionId);
+            AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
             if (submission == null) {
                 throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
             }
@@ -90,12 +91,12 @@ public class AlgorithmEvaluationService {
 
     /** 제출 정보 업데이트 */
     private void applyEvaluation(
-            AlgoSubmission submission,
+            AlgoSubmissionDto submission,
             AICodeEvaluationResult ai,
             ScoreCalculationResult score
     ) {
         submission.setAiFeedback(ai.getFeedback());
-        submission.setAiFeedbackStatus(AlgoSubmission.AiFeedbackStatus.COMPLETED);
+        submission.setAiFeedbackStatus(AiFeedbackStatus.COMPLETED);
         submission.setAiScore(BigDecimal.valueOf(ai.getAiScore()));
 
         submission.setTimeEfficiencyScore(BigDecimal.valueOf(score.getTimeEfficiencyScore()));
@@ -106,10 +107,10 @@ public class AlgorithmEvaluationService {
     /** 평가 실패 처리 */
     private void markEvaluationFailed(Long submissionId, String msg) {
         try {
-            AlgoSubmission submission = submissionMapper.selectSubmissionById(submissionId);
+            AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
             if (submission == null) return;
 
-            submission.setAiFeedbackStatus(AlgoSubmission.AiFeedbackStatus.FAILED);
+            submission.setAiFeedbackStatus(AiFeedbackStatus.FAILED);
             submission.setAiFeedback("AI 평가 실패: " + msg);
             submission.setAiScore(BigDecimal.valueOf(50.0));
             submissionMapper.updateSubmission(submission);
@@ -143,7 +144,7 @@ public class AlgorithmEvaluationService {
 
     @Transactional(readOnly = true)
     public SubmissionAiStatusDto getEvaluationStatus(Long submissionId) {
-        AlgoSubmission submission = submissionMapper.selectSubmissionById(submissionId);
+        AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
         if (submission == null) {
             throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
         }
@@ -165,12 +166,12 @@ public class AlgorithmEvaluationService {
     @Transactional
     public CompletableFuture<Void> retryEvaluation(Long submissionId) {
 
-        AlgoSubmission submission = submissionMapper.selectSubmissionById(submissionId);
+        AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
         if (submission == null) {
             throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
         }
 
-        submission.setAiFeedbackStatus(AlgoSubmission.AiFeedbackStatus.PENDING);
+        submission.setAiFeedbackStatus(AiFeedbackStatus.PENDING);
         submission.setAiFeedback(null);
         submission.setAiScore(null);
         submissionMapper.updateSubmission(submission);

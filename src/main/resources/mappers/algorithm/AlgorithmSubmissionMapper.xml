@@ -4,7 +4,7 @@
 <mapper namespace="kr.or.kosa.backend.algorithm.mapper.AlgorithmSubmissionMapper">
 
     <!-- Result Map 정의 -->
-    <resultMap id="algoSubmissionResultMap" type="kr.or.kosa.backend.algorithm.domain.AlgoSubmission">
+    <resultMap id="algoSubmissionResultMap" type="kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto">
         <id property="algosubmissionId" column="ALGOSUBMISSION_ID"/>
         <result property="algoProblemId" column="ALGO_PROBLEM_ID"/>
         <result property="userId" column="USER_ID"/>
@@ -35,7 +35,7 @@
     </resultMap>
 
     <!-- 제출 저장 -->
-    <insert id="insertSubmission" parameterType="kr.or.kosa.backend.algorithm.domain.AlgoSubmission"
+    <insert id="insertSubmission" parameterType="kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto"
             useGeneratedKeys="true" keyProperty="algosubmissionId">
         INSERT INTO ALGO_SUBMISSIONS (
         ALGO_PROBLEM_ID, USER_ID, SOURCE_CODE, LANGUAGE, EXECUTION_TIME, MEMORY_USAGE,
@@ -90,7 +90,7 @@
     </select>
 
     <!-- 제출 정보 업데이트 -->
-    <update id="updateSubmission" parameterType="kr.or.kosa.backend.algorithm.domain.AlgoSubmission">
+    <update id="updateSubmission" parameterType="kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto">
         UPDATE ALGO_SUBMISSIONS SET
         JUDGE_RESULT = #{judgeResult},
         EXECUTION_TIME = #{executionTime},

@@ -5,28 +5,28 @@
 <mapper namespace="kr.or.kosa.backend.algorithm.mapper.FocusTrackingMapper">
 
     <!-- 세션 시작 -->
-    <insert id="startSession" parameterType="kr.or.kosa.backend.algorithm.domain.FocusSession">
+    <insert id="startSession" parameterType="kr.or.kosa.backend.algorithm.dto.FocusSessionDto">
         INSERT INTO focus_sessions (
             session_id,
-            user_id, 
-            algo_problem_id, 
-            started_at, 
+            user_id,
+            algo_problem_id,
+            started_at,
             session_status,
             violation_count
         ) VALUES (
             #{sessionId},
-            #{userId}, 
-            #{problemId}, 
-            #{startTime}, 
+            #{userId},
+            #{problemId},
+            #{startTime},
             'ACTIVE',
             0
         )
     </insert>
 
     <!-- 세션 종료 업데이트 -->
-    <update id="updateSession" parameterType="kr.or.kosa.backend.algorithm.domain.FocusSession">
+    <update id="updateSession" parameterType="kr.or.kosa.backend.algorithm.dto.FocusSessionDto">
         UPDATE focus_sessions
-        SET 
+        SET
             ended_at = #{endTime},
             session_status = #{status},
             violation_count = #{violationCount}
@@ -34,7 +34,7 @@
     </update>
 
     <!-- 위반 로그 저장 -->
-    <insert id="insertViolationLog" parameterType="kr.or.kosa.backend.algorithm.domain.ViolationLog" useGeneratedKeys="true" keyProperty="violationId">
+    <insert id="insertViolationLog" parameterType="kr.or.kosa.backend.algorithm.dto.ViolationLogDto" useGeneratedKeys="true" keyProperty="violationId">
         INSERT INTO violation_logs (
             session_id,
             user_id,
@@ -59,7 +59,7 @@
     </insert>
 
     <!-- 집중도 요약 저장 -->
-    <insert id="insertFocusSummary" parameterType="kr.or.kosa.backend.algorithm.domain.FocusSummary">
+    <insert id="insertFocusSummary" parameterType="kr.or.kosa.backend.algorithm.dto.FocusSummaryDto">
         INSERT INTO focus_summary (
             session_id,
             user_id,
@@ -82,8 +82,8 @@
     </insert>
 
     <!-- 세션 조회 -->
-    <select id="findSessionById" resultType="kr.or.kosa.backend.algorithm.domain.FocusSession">
-        SELECT 
+    <select id="findSessionById" resultType="kr.or.kosa.backend.algorithm.dto.FocusSessionDto">
+        SELECT
             session_id as sessionId,
             user_id as userId,
             algo_problem_id as problemId,
@@ -96,8 +96,8 @@
     </select>
 
     <!-- 위반 로그 목록 조회 -->
-    <select id="findLogsBySessionId" resultType="kr.or.kosa.backend.algorithm.domain.ViolationLog">
-        SELECT 
+    <select id="findLogsBySessionId" resultType="kr.or.kosa.backend.algorithm.dto.ViolationLogDto">
+        SELECT
             violation_id as violationId,
             session_id as sessionId,
             user_id as userId,
@@ -114,8 +114,8 @@
     </select>
 
     <!-- 활성 세션 조회 -->
-    <select id="findActiveSessionByUserId" resultType="kr.or.kosa.backend.algorithm.domain.FocusSession">
-        SELECT 
+    <select id="findActiveSessionByUserId" resultType="kr.or.kosa.backend.algorithm.dto.FocusSessionDto">
+        SELECT
             session_id as sessionId,
             user_id as userId,
             algo_problem_id as problemId,

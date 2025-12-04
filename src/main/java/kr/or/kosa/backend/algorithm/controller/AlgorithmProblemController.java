@@ -1,6 +1,6 @@
 package kr.or.kosa.backend.algorithm.controller;
 
-import kr.or.kosa.backend.algorithm.domain.AlgoProblem;
+import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
 import kr.or.kosa.backend.algorithm.dto.*;
 import kr.or.kosa.backend.algorithm.exception.AlgoErrorCode;
 import kr.or.kosa.backend.algorithm.service.AIProblemGeneratorService;
@@ -149,7 +149,7 @@ public class AlgorithmProblemController {
                     offset, size, difficulty, source, keyword, topic);
 
             // Service 호출에 topic 추가
-            List<AlgoProblem> problems = algorithmProblemService.getProblemsWithFilter(
+            List<AlgoProblemDto> problems = algorithmProblemService.getProblemsWithFilter(
                     offset, size, difficulty, source, keyword, topic);
 
             log.info("Service 호출 후 - 조회된 문제 수: {}", problems.size());
@@ -274,7 +274,7 @@ public class AlgorithmProblemController {
      * GET /api/algo/problems/{problemId}
      */
     @GetMapping("/{problemId}")
-    public ResponseEntity<ApiResponse<AlgoProblem>> getProblemDetail(@PathVariable Long problemId) {
+    public ResponseEntity<ApiResponse<AlgoProblemDto>> getProblemDetail(@PathVariable Long problemId) {
 
         log.info("알고리즘 문제 상세 조회 - problemId: {}", problemId);
 
@@ -284,7 +284,7 @@ public class AlgorithmProblemController {
                 throw new CustomBusinessException(AlgoErrorCode.PROBLEM_NOT_FOUND);
             }
 
-            AlgoProblem problem = algorithmProblemService.getProblemDetail(problemId);
+            AlgoProblemDto problem = algorithmProblemService.getProblemDetail(problemId);
 
             log.info("문제 상세 조회 성공 - problemId: {}, title: {}", problemId, problem.getAlgoProblemTitle());
 

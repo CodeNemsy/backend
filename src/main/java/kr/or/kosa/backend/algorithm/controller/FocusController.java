@@ -1,6 +1,6 @@
 package kr.or.kosa.backend.algorithm.controller;
 
-import kr.or.kosa.backend.algorithm.domain.FocusSession;
+import kr.or.kosa.backend.algorithm.dto.FocusSessionDto;
 import kr.or.kosa.backend.algorithm.service.FocusTrackingService;
 import kr.or.kosa.backend.commons.response.ApiResponse;
 import kr.or.kosa.backend.security.jwt.JwtAuthentication;
@@ -44,7 +44,7 @@ public class FocusController {
      * POST /algo/focus/start
      */
     @PostMapping("/start")
-    public ResponseEntity<ApiResponse<FocusSession>> startSession(
+    public ResponseEntity<ApiResponse<FocusSessionDto>> startSession(
             @RequestBody Map<String, Long> request,
             @AuthenticationPrincipal JwtAuthentication authentication) {
         log.info("👁️ [Focus Start] 세션 시작 요청 수신 - request: {}", request);
@@ -52,7 +52,7 @@ public class FocusController {
         Long problemId = request.get("problemId");
         log.info("👁️ [Focus Start] userId: {}, problemId: {}", userId, problemId);
 
-        FocusSession session = focusTrackingService.startSession(userId, problemId);
+        FocusSessionDto session = focusTrackingService.startSession(userId, problemId);
         return ResponseEntity.ok(ApiResponse.success(session));
     }
 
@@ -78,13 +78,13 @@ public class FocusController {
      * POST /algo/focus/end
      */
     @PostMapping("/end")
-    public ResponseEntity<ApiResponse<FocusSession>> endSession(
+    public ResponseEntity<ApiResponse<FocusSessionDto>> endSession(
             @RequestBody Map<String, String> request) {
         log.info("👁️ [Focus End] 세션 종료 요청 수신 - request: {}", request);
         String sessionId = request.get("sessionId");
         log.info("👁️ [Focus End] sessionId: {}", sessionId);
 
-        FocusSession result = focusTrackingService.endSession(sessionId);
+        FocusSessionDto result = focusTrackingService.endSession(sessionId);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

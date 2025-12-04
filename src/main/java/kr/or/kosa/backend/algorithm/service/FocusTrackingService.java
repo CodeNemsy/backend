@@ -1,8 +1,8 @@
 package kr.or.kosa.backend.algorithm.service;
 
-import kr.or.kosa.backend.algorithm.domain.FocusSession;
-import kr.or.kosa.backend.algorithm.domain.FocusSummary;
-import kr.or.kosa.backend.algorithm.domain.ViolationLog;
+import kr.or.kosa.backend.algorithm.dto.FocusSessionDto;
+import kr.or.kosa.backend.algorithm.dto.FocusSummaryDto;
+import kr.or.kosa.backend.algorithm.dto.ViolationLogDto;
 import kr.or.kosa.backend.algorithm.mapper.FocusTrackingMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +30,9 @@ public class FocusTrackingService {
      * 집중 세션 시작
      */
     @Transactional
-    public FocusSession startSession(Long userId, Long problemId) {
+    public FocusSessionDto startSession(Long userId, Long problemId) {
         // 1. 이미 활성화된 세션이 있는지 확인
-        FocusSession existingSession = focusTrackingMapper.findActiveSessionByUserId(userId, problemId);
+        FocusSessionDto existingSession = focusTrackingMapper.findActiveSessionByUserId(userId, problemId);
         if (existingSession != null) {
             log.info("Active session already exists for user {} problem {}", userId, problemId);
             return existingSession;
@@ -41,7 +41,7 @@ public class FocusTrackingService {
         // 2. 새 세션 생성 (UUID 사용) 및 DB 저장
         String sessionId = java.util.UUID.randomUUID().toString();
 
-        FocusSession newSession = FocusSession.builder()
+        FocusSessionDto newSession = FocusSessionDto.builder()
                 .sessionId(sessionId)
                 .userId(userId)
                 .problemId(problemId)
@@ -82,9 +82,9 @@ public class FocusTrackingService {
      */
     @Transactional
     @SuppressWarnings("unchecked")
-    public FocusSession endSession(String sessionId) {
+    public FocusSessionDto endSession(String sessionId) {
         // 1. DB에서 세션 조회
-        FocusSession session = focusTrackingMapper.findSessionById(sessionId);
+        FocusSessionDto session = focusTrackingMapper.findSessionById(sessionId);
         if (session == null) {
             throw new IllegalArgumentException("Session not found");
         }
@@ -121,7 +121,7 @@ public class FocusTrackingService {
                     // DB ENUM 타입으로 매핑
                     String dbViolationType = mapToDbViolationType(type);
 
-                    ViolationLog log = ViolationLog.builder()
+                    ViolationLogDto violationLog = ViolationLogDto.builder()
                             .sessionId(sessionId)
                             .userId(session.getUserId())
                             .violationType(dbViolationType)
@@ -132,7 +132,7 @@ public class FocusTrackingService {
                             .sessionTimeOffsetSeconds((int) offsetSeconds)
                             .build();
 
-                    focusTrackingMapper.insertViolationLog(log);
+                    focusTrackingMapper.insertViolationLog(violationLog);
                 }
             }
         }
@@ -147,7 +147,7 @@ public class FocusTrackingService {
         // 5. 집중도 요약 생성 및 저장
         double focusRate = Math.max(0, 100.0 - (violationCount * 5.0));
 
-        FocusSummary summary = FocusSummary.builder()
+        FocusSummaryDto summary = FocusSummaryDto.builder()
                 .sessionId(sessionId)
                 .userId(session.getUserId())
                 .totalEvents(rawEvents != null ? rawEvents.size() : 0)

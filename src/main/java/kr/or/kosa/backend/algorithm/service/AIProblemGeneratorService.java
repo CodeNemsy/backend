@@ -3,11 +3,11 @@ package kr.or.kosa.backend.algorithm.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kr.or.kosa.backend.algorithm.domain.AlgoProblem;
-import kr.or.kosa.backend.algorithm.domain.AlgoTestcase;
-import kr.or.kosa.backend.algorithm.domain.ProblemDifficulty;
-import kr.or.kosa.backend.algorithm.domain.ProblemSource;
-import kr.or.kosa.backend.algorithm.domain.ProblemType;
+import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
+import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
+import kr.or.kosa.backend.algorithm.dto.enums.ProblemDifficulty;
+import kr.or.kosa.backend.algorithm.dto.enums.ProblemSource;
+import kr.or.kosa.backend.algorithm.dto.enums.ProblemType;
 import kr.or.kosa.backend.algorithm.dto.ProblemGenerationRequestDto;
 import kr.or.kosa.backend.algorithm.dto.ProblemGenerationResponseDto;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;
@@ -48,8 +48,8 @@ public class AIProblemGeneratorService {
             String aiResponse = callOpenAI(prompt);
 
             // 3. 응답 파싱
-            AlgoProblem problem = parseAIProblemResponse(aiResponse, request);
-            List<AlgoTestcase> testCases = parseAITestCaseResponse(aiResponse);
+            AlgoProblemDto problem = parseAIProblemResponse(aiResponse, request);
+            List<AlgoTestcaseDto> testCases = parseAITestCaseResponse(aiResponse);
 
             double generationTime = (System.currentTimeMillis() - startTime) / 1000.0;
 
@@ -130,9 +130,9 @@ public class AIProblemGeneratorService {
      */
     private List<String> getExistingProblemTitles() {
         try {
-            List<AlgoProblem> problems = algorithmProblemMapper.selectProblems(0, 100); // 최근 100개 문제
+            List<AlgoProblemDto> problems = algorithmProblemMapper.selectProblems(0, 100); // 최근 100개 문제
             return problems.stream()
-                    .map(AlgoProblem::getAlgoProblemTitle)
+                    .map(AlgoProblemDto::getAlgoProblemTitle)
                     .filter(title -> title != null && !title.isEmpty())
                     .toList();
         } catch (Exception e) {
@@ -254,7 +254,7 @@ public class AIProblemGeneratorService {
     /**
      * 문제 정보 파싱
      */
-    private AlgoProblem parseAIProblemResponse(String aiResponse, ProblemGenerationRequestDto request)
+    private AlgoProblemDto parseAIProblemResponse(String aiResponse, ProblemGenerationRequestDto request)
             throws JsonProcessingException {
 
         // JSON 전처리 (```json ``` 제거)
@@ -279,7 +279,7 @@ public class AIProblemGeneratorService {
             }
         }
 
-        return AlgoProblem.builder()
+        return AlgoProblemDto.builder()
                 .algoProblemTitle(jsonNode.get("title").asText())
                 .algoProblemDescription(buildFullDescription(jsonNode))
                 .algoProblemDifficulty(request.getDifficulty())
@@ -360,7 +360,7 @@ public class AIProblemGeneratorService {
     /**
      * 테스트케이스 파싱
      */
-    private List<AlgoTestcase> parseAITestCaseResponse(String aiResponse) throws JsonProcessingException {
+    private List<AlgoTestcaseDto> parseAITestCaseResponse(String aiResponse) throws JsonProcessingException {
 
         // JSON 전처리
         String cleanedJson = aiResponse
@@ -371,10 +371,10 @@ public class AIProblemGeneratorService {
         JsonNode jsonNode = objectMapper.readTree(cleanedJson);
         JsonNode testCasesNode = jsonNode.get("testCases");
 
-        List<AlgoTestcase> testCases = new ArrayList<>();
+        List<AlgoTestcaseDto> testCases = new ArrayList<>();
 
         // 샘플 테스트케이스 (첫 번째)
-        testCases.add(AlgoTestcase.builder()
+        testCases.add(AlgoTestcaseDto.builder()
                 .inputData(jsonNode.get("sampleInput").asText())
                 .expectedOutput(jsonNode.get("sampleOutput").asText())
                 .isSample(true)
@@ -384,7 +384,7 @@ public class AIProblemGeneratorService {
         if (testCasesNode != null && testCasesNode.isArray()) {
             for (JsonNode testCase : testCasesNode) {
                 testCases.add(
-                        AlgoTestcase.builder()
+                        AlgoTestcaseDto.builder()
                                 .inputData(testCase.get("input").asText())
                                 .expectedOutput(testCase.get("output").asText())
                                 .isSample(false)

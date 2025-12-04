@@ -1,6 +1,6 @@
 package kr.or.kosa.backend.algorithm.dto;
 
-import kr.or.kosa.backend.algorithm.domain.AlgoSubmission;
+import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,7 +30,7 @@ public class SubmissionRequestDto {
     private String focusSessionId;
 
     // AI 피드백 요청 타입
-    private AlgoSubmission.AiFeedbackType feedbackType;
+    private AiFeedbackType feedbackType;
 
     // GitHub 커밋 요청 여부
     private Boolean requestGithubCommit;

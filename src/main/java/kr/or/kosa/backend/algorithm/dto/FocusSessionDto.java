@@ -1,4 +1,4 @@
-package kr.or.kosa.backend.algorithm.domain;
+package kr.or.kosa.backend.algorithm.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,11 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 집중 세션 DTO
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FocusSession {
+public class FocusSessionDto {
     private String sessionId;
     private Long userId;
     private Long problemId;
