@@ -71,4 +71,6 @@ public interface UserMapper {
     Integer countSocialAccount(Long userId, String provider);
 
     Map<String, Object> getGithubUserInfo(@Param("userId") Long userId);
+
+    String findSocialProviderByUserId(@Param("userId") Long userId);
 }

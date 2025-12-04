@@ -35,6 +35,10 @@ public class GitHubLoginController {
     private static final String KEY_SUCCESS = "success";
     private static final String KEY_MESSAGE = "message";
 
+    private static final String KEY_GITHUB_ID = "githubId";
+    private static final String KEY_GITHUB_LOGIN = "githubLogin";
+    private static final String KEY_AVATAR_URL = "avatarUrl";
+
     /**
      * 🔥 GitHub OAuth Callback
      */
@@ -64,9 +68,7 @@ public class GitHubLoginController {
     }
 
     /**
-     * 🔍 GitHub 연동 정보 조회 API
-     * 👉 Users 엔티티에는 GitHub 정보가 없으므로
-     * 👉 GitHub API를 직접 호출해 최신 정보를 가져온다.
+     * 🔍 GitHub 연동 정보 조회
      */
     @GetMapping("/user")
     public ResponseEntity<Map<String, Object>> getGithubUserInfo(
@@ -77,29 +79,25 @@ public class GitHubLoginController {
 
         boolean linked = userService.isGithubLinked(userId);
 
-        // GitHub 계정 연동 안 했으면 null 값 반환
         if (!linked) {
-            return ResponseEntity.ok(
-                    Map.of(
-                            "linked", false,
-                            "githubId", null,
-                            "githubLogin", null,
-                            "avatarUrl", null
-                    )
-            );
+            Map<String, Object> body = new HashMap<>();
+            body.put("linked", false);
+            body.put(KEY_GITHUB_ID, null);
+            body.put(KEY_GITHUB_LOGIN, null);
+            body.put(KEY_AVATAR_URL, null);
+
+            return ResponseEntity.ok(body);
         }
 
-        // ⭐ JOIN 으로 얻은 GitHub 실제 정보 가져오기
         Map<String, Object> githubInfo = userService.getGithubUserInfo(userId);
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "linked", true,
-                        "githubId", githubInfo.get("githubId"),
-                        "githubLogin", githubInfo.get("githubLogin"),
-                        "avatarUrl", githubInfo.get("avatarUrl")
-                )
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("linked", true);
+        body.put(KEY_GITHUB_ID, githubInfo.get(KEY_GITHUB_ID));
+        body.put(KEY_GITHUB_LOGIN, githubInfo.get(KEY_GITHUB_LOGIN));
+        body.put(KEY_AVATAR_URL, githubInfo.get(KEY_AVATAR_URL));
+
+        return ResponseEntity.ok(body);
     }
 
     /**

@@ -14,7 +14,8 @@ public enum UserErrorCode implements ErrorCode {
     FILE_SAVE_ERROR("USER012", "파일 저장 중 오류가 발생했습니다."),
     INVALID_TOKEN("USER014", "유효하지 않은 토큰입니다."),
     ALREADY_SCHEDULED_DELETE("USER100", "이미 탈퇴 예약 중인 계정입니다."),
-    FILE_UPLOAD_FAILED("USER013", "파일 업로드에 실패했습니다.");
+    FILE_UPLOAD_FAILED("USER013", "파일 업로드에 실패했습니다."),
+    UNSUPPORTED_OAUTH_PROVIDER("USER200", "지원되지 않는 OAuth 제공자입니다.");
 
     private final String code;
     private final String message;

@@ -39,6 +39,7 @@ public class UserServiceImpl implements UserService {
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 14;
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
+    private static final String PROVIDER_GITHUB = "github";
 
     // ---------------------------------------------------------
     // 회원가입
@@ -406,29 +407,38 @@ public class UserServiceImpl implements UserService {
     // GitHub 로그인 (회원 생성만 담당)
     // JWT 발급은 Controller에서 처리하는 것이 정석
     // ---------------------------------------------------------
+    // ---------------------------------------------------------
+    // GitHub 로그인 (회원 생성만 담당)
+    // JWT 발급은 Controller에서 처리하는 것이 정석
+    // ---------------------------------------------------------
     @Override
     public Users githubLogin(GitHubUserResponse gitHubUser) {
 
-        String provider = "github";
+        String provider = PROVIDER_GITHUB;
         String providerId = String.valueOf(gitHubUser.getId());
-        String email = gitHubUser.getEmail();  // null 가능
+        String email = gitHubUser.getEmail(); // null 가능
 
-        // -----------------------------------------------------
         // 1) 이미 SOCIALLOGIN에 연동된 경우 → 바로 로그인
-        // -----------------------------------------------------
         Users linkedUser = userMapper.findBySocialProvider(provider, providerId);
         if (linkedUser != null) {
             return linkedUser;
         }
 
-        // -----------------------------------------------------
-        // 2) 기존 유저가 존재하면 자동 연동 후 로그인
-        // -----------------------------------------------------
+        // 2) 이메일 기반 기존 유저 확인
         if (email != null) {
             Users existingUser = userMapper.findByEmail(email);
+
             if (existingUser != null) {
 
-                // 자동 연동
+                String existingProvider =
+                        userMapper.findSocialProviderByUserId(existingUser.getUserId());
+
+                // provider가 다르면 → 기존 계정과 merge 금지 → 새로운 계정 생성
+                if (existingProvider != null && !existingProvider.equals(provider)) {
+                    return createNewGithubUser(gitHubUser);
+                }
+
+                // provider 같으면 → SOCIALLOGIN 연동
                 userMapper.insertSocialAccount(
                         existingUser.getUserId(),
                         provider,
@@ -440,31 +450,8 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        // -----------------------------------------------------
-        // 3) 기존 유저도 없으면 → 신규 Users 자동 생성
-        // -----------------------------------------------------
-        String randomPassword = UUID.randomUUID().toString();
-        Users newUser = new Users();
-        newUser.setUserEmail(email != null ? email : "github-" + providerId + "@noemail.com");
-        newUser.setUserName(gitHubUser.getName());
-        newUser.setUserNickname(gitHubUser.getLogin());
-        newUser.setUserImage(gitHubUser.getAvatar_url());
-        newUser.setUserPw(passwordEncoder.encode(randomPassword));
-        newUser.setUserRole("ROLE_USER");
-        newUser.setUserEnabled(true);
-
-        // Users INSERT
-        userMapper.insertUser(newUser);
-
-        // SOCIALLOGIN INSERT
-        userMapper.insertSocialAccount(
-                newUser.getUserId(),
-                provider,
-                providerId,
-                email
-        );
-
-        return newUser;
+        // 3) 기존 유저도 없음 → 신규 유저 생성 (중복 로직 제거됨)
+        return createNewGithubUser(gitHubUser);
     }
 
     // ---------------------------------------------------------
@@ -479,7 +466,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // GitHub provider 정보 삭제
-        int result = userMapper.deleteSocialAccount(userId, "github");
+        int result = userMapper.deleteSocialAccount(userId, PROVIDER_GITHUB);
 
         return result > 0;
     }
@@ -491,7 +478,7 @@ public class UserServiceImpl implements UserService {
     public boolean isGithubLinked(Long userId) {
 
         // 소셜 로그인 추가 여부 확인 (userMapper 필요)
-        Integer count = userMapper.countSocialAccount(userId, "github");
+        Integer count = userMapper.countSocialAccount(userId, PROVIDER_GITHUB);
 
         return count != null && count > 0;
     }
@@ -502,5 +489,40 @@ public class UserServiceImpl implements UserService {
     @Override
     public Map<String, Object> getGithubUserInfo(Long userId) {
         return userMapper.getGithubUserInfo(userId);
+    }
+
+    // ---------------------------------------------------------
+    // GitHub 신규 계정 생성 (provider 충돌 시 사용)
+    // ---------------------------------------------------------
+    private Users createNewGithubUser(GitHubUserResponse gitHubUser) {
+
+        String providerId = String.valueOf(gitHubUser.getId());
+        String email = gitHubUser.getEmail(); // null일 수 있음
+
+        // 랜덤 비밀번호 생성
+        String randomPassword = UUID.randomUUID().toString();
+
+        // 신규 Users 생성
+        Users newUser = new Users();
+        newUser.setUserEmail(email != null ? email : "github-" + providerId + "@noemail.com");
+        newUser.setUserName(gitHubUser.getName());
+        newUser.setUserNickname(gitHubUser.getLogin());
+        newUser.setUserImage(gitHubUser.getAvatar_url());
+        newUser.setUserPw(passwordEncoder.encode(randomPassword));
+        newUser.setUserRole("ROLE_USER");
+        newUser.setUserEnabled(true);
+
+        // DB에 INSERT
+        userMapper.insertUser(newUser);
+
+        // SOCIAL_LOGIN에도 INSERT
+        userMapper.insertSocialAccount(
+                newUser.getUserId(),
+                PROVIDER_GITHUB,
+                providerId,
+                email
+        );
+
+        return newUser;
     }
 }

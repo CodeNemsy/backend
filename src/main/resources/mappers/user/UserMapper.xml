@@ -62,6 +62,13 @@
           AND s.SOCIALLOGIN_PROVIDER = 'github'
     </select>
 
+    <select id="findSocialProviderByUserId" resultType="string">
+        SELECT SOCIALLOGIN_PROVIDER
+        FROM SOCIALLOGIN
+        WHERE USER_ID = #{userId}
+        LIMIT 1
+    </select>
+
     <!-- ========= INSERT ========= -->
 
     <insert id="insertUser"
