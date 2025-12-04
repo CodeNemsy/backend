@@ -3,7 +3,9 @@ package kr.or.kosa.backend.freeboard.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
 import kr.or.kosa.backend.freeboard.domain.Freeboard;
+import kr.or.kosa.backend.freeboard.dto.FreeboardDetailResponseDto;
 import kr.or.kosa.backend.freeboard.dto.FreeboardDto;
+import kr.or.kosa.backend.freeboard.dto.FreeboardListResponseDto;
 import kr.or.kosa.backend.freeboard.exception.FreeboardErrorCode;
 import kr.or.kosa.backend.freeboard.mapper.FreeboardMapper;
 import kr.or.kosa.backend.tag.service.TagService;
@@ -29,7 +31,7 @@ public class FreeboardService {
     public Map<String, Object> listPage(int page, int size) {
         int offset = (page - 1) * size;
 
-        List<Freeboard> boards = mapper.selectPage(offset, size);
+        List<FreeboardListResponseDto> boards = mapper.selectPage(offset, size);
         int totalCount = mapper.countAll();
 
         Map<String, Object> result = new HashMap<>();
@@ -43,18 +45,17 @@ public class FreeboardService {
     }
 
     @Transactional
-    public Freeboard detail(Long id) {
+    public FreeboardDetailResponseDto detail(Long id) {
         mapper.increaseClick(id);
 
-        Freeboard freeboard = mapper.selectById(id);
+        FreeboardDetailResponseDto freeboard = mapper.selectById(id);
         if (freeboard == null) {
             throw new CustomBusinessException(FreeboardErrorCode.NOT_FOUND);
         }
 
         List<String> tags = tagService.getFreeboardTags(id);
-        freeboard.setTags(tags);
 
-        return freeboard;
+        return freeboard.withTags(tags);
     }
 
     @Transactional
@@ -96,7 +97,7 @@ public class FreeboardService {
     @Transactional
     public void edit(Long id, FreeboardDto dto, Long userId) {
 
-        Freeboard existing = mapper.selectById(id);
+        FreeboardDetailResponseDto existing = mapper.selectById(id);
         if (existing == null) {
             throw new CustomBusinessException(FreeboardErrorCode.NOT_FOUND);
         }
@@ -134,7 +135,7 @@ public class FreeboardService {
 
     @Transactional
     public void delete(Long id, Long userId) {
-        Freeboard existing = mapper.selectById(id);
+        FreeboardDetailResponseDto existing = mapper.selectById(id);
         if (existing == null) {
             throw new CustomBusinessException(FreeboardErrorCode.NOT_FOUND);
         }

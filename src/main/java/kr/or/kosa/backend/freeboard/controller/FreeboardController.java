@@ -2,8 +2,8 @@ package kr.or.kosa.backend.freeboard.controller;
 
 import jakarta.validation.Valid;
 import kr.or.kosa.backend.commons.response.ApiResponse;
-import kr.or.kosa.backend.freeboard.domain.Freeboard;
 import kr.or.kosa.backend.freeboard.dto.FreeboardCreateRequest;
+import kr.or.kosa.backend.freeboard.dto.FreeboardDetailResponseDto;
 import kr.or.kosa.backend.freeboard.dto.FreeboardDto;
 import kr.or.kosa.backend.freeboard.dto.FreeboardUpdateRequest;
 import kr.or.kosa.backend.freeboard.service.FreeboardService;
@@ -38,8 +38,8 @@ public class FreeboardController {
     }
 
     @GetMapping("/{freeboardId}")
-    public ResponseEntity<Freeboard> get(@PathVariable Long freeboardId) {
-        Freeboard freeboard = freeboardService.detail(freeboardId);
+    public ResponseEntity<FreeboardDetailResponseDto> get(@PathVariable Long freeboardId) {
+        FreeboardDetailResponseDto freeboard = freeboardService.detail(freeboardId);
         return ResponseEntity.ok(freeboard);
     }
 

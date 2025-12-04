@@ -5,55 +5,83 @@
 
 <mapper namespace="kr.or.kosa.backend.freeboard.mapper.FreeboardMapper">
 
-    <!-- 게시글 목록 (페이징) -->
-    <select id="selectPage" resultMap="FreeboardWithTagsMap">
-        SELECT
-        f.FREEBOARD_ID,
-        f.USER_ID,
-        f.FREEBOARD_TITLE,
-        f.FREEBOARD_CONTENT,
-        f.FREEBOARD_CLICK,
-        f.FREEBOARD_REPRESENT_IMAGE,
-        f.FREEBOARD_CREATED_AT,
-        t.TAG_NAME
-        FROM FREEBOARD f
-        LEFT JOIN FREEBOARD_TAG ft ON f.FREEBOARD_ID = ft.FREEBOARD_ID
-        LEFT JOIN TAG t ON ft.TAG_ID = t.TAG_ID
-        ORDER BY f.FREEBOARD_ID DESC
-        LIMIT #{size} OFFSET #{offset}
-    </select>
-
-    <!-- 태그 불러오는 resultMap -->
-    <resultMap id="FreeboardWithTagsMap" type="kr.or.kosa.backend.freeboard.domain.Freeboard">
+    <!-- 게시글 목록용 resultMap -->
+    <resultMap id="FreeboardListResponseMap" type="kr.or.kosa.backend.freeboard.dto.FreeboardListResponseDto">
         <id property="freeboardId" column="FREEBOARD_ID"/>
-
         <result property="userId" column="USER_ID"/>
+        <result property="userNickname" column="USER_NICKNAME"/>
         <result property="freeboardTitle" column="FREEBOARD_TITLE"/>
-        <result property="freeboardContent" column="FREEBOARD_CONTENT"/>
+        <result property="freeboardSummary" column="FREEBOARD_SUMMARY"/>
         <result property="freeboardClick" column="FREEBOARD_CLICK"/>
         <result property="freeboardRepresentImage" column="FREEBOARD_REPRESENT_IMAGE"/>
         <result property="freeboardCreatedAt" column="FREEBOARD_CREATED_AT"/>
+        <result property="likeCount" column="LIKE_COUNT"/>
+        <result property="commentCount" column="COMMENT_COUNT"/>
 
         <collection property="tags" ofType="java.lang.String">
             <result column="TAG_NAME"/>
         </collection>
     </resultMap>
 
-    <!-- 상세 조회 -->
-    <select id="selectById" parameterType="long" resultType="kr.or.kosa.backend.freeboard.domain.Freeboard">
+    <!-- 게시글 목록 (페이징) -->
+    <select id="selectPage" resultMap="FreeboardListResponseMap">
         SELECT
-        FREEBOARD_ID,
-        USER_ID,
-        FREEBOARD_TITLE,
-        FREEBOARD_CONTENT,
-        FREEBOARD_CLICK,
-        FREEBOARD_IMAGE,
-        FREEBOARD_REPRESENT_IMAGE,
-        FREEBOARD_CREATED_AT,
-        FREEBOARD_DELETED_YN
-        FROM FREEBOARD
-        WHERE FREEBOARD_ID = #{id}
-        AND FREEBOARD_DELETED_YN = 'N'
+        f.FREEBOARD_ID,
+        f.USER_ID,
+        f.FREEBOARD_TITLE,
+        SUBSTRING(f.FREEBOARD_CONTENT, 1, 200) as FREEBOARD_SUMMARY,
+        f.FREEBOARD_CLICK,
+        f.FREEBOARD_REPRESENT_IMAGE,
+        f.FREEBOARD_CREATED_AT,
+        t.TAG_NAME,
+        u.USER_NICKNAME,
+        COALESCE(f.LIKE_COUNT, 0) as LIKE_COUNT,
+        COALESCE(
+        (SELECT COUNT(*)
+        FROM COMMENT c
+        WHERE c.BOARD_ID = f.FREEBOARD_ID
+        AND c.BOARD_TYPE = 'FREEBOARD'
+        AND c.IS_DELETED = FALSE),
+        0
+        ) as COMMENT_COUNT
+        FROM FREEBOARD f
+        LEFT JOIN FREEBOARD_TAG ft ON f.FREEBOARD_ID = ft.FREEBOARD_ID
+        LEFT JOIN TAG t ON ft.TAG_ID = t.TAG_ID
+        LEFT JOIN USERS u ON f.USER_ID = u.USER_ID
+        WHERE f.FREEBOARD_DELETED_YN = 'N'
+        ORDER BY f.FREEBOARD_ID DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <!-- 상세 조회용 resultMap -->
+    <resultMap id="FreeboardDetailResponseMap" type="kr.or.kosa.backend.freeboard.dto.FreeboardDetailResponseDto">
+        <id property="freeboardId" column="FREEBOARD_ID"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="userNickname" column="USER_NICKNAME"/>
+        <result property="freeboardTitle" column="FREEBOARD_TITLE"/>
+        <result property="freeboardContent" column="FREEBOARD_CONTENT"/>
+        <result property="freeboardClick" column="FREEBOARD_CLICK"/>
+        <result property="freeboardImage" column="FREEBOARD_IMAGE"/>
+        <result property="freeboardRepresentImage" column="FREEBOARD_REPRESENT_IMAGE"/>
+        <result property="freeboardCreatedAt" column="FREEBOARD_CREATED_AT"/>
+    </resultMap>
+
+    <!-- 상세 조회 -->
+    <select id="selectById" parameterType="long" resultMap="FreeboardDetailResponseMap">
+        SELECT
+        f.FREEBOARD_ID,
+        f.USER_ID,
+        f.FREEBOARD_TITLE,
+        f.FREEBOARD_CONTENT,
+        f.FREEBOARD_CLICK,
+        f.FREEBOARD_IMAGE,
+        f.FREEBOARD_REPRESENT_IMAGE,
+        f.FREEBOARD_CREATED_AT,
+        u.USER_NICKNAME
+        FROM FREEBOARD f
+        LEFT JOIN USERS u ON f.USER_ID = u.USER_ID
+        WHERE f.FREEBOARD_ID = #{id}
+        AND f.FREEBOARD_DELETED_YN = 'N'
     </select>
 
     <!-- 등록 -->
@@ -86,6 +114,7 @@
         SET
         FREEBOARD_TITLE = #{freeboardTitle},
         FREEBOARD_CONTENT = #{freeboardContent},
+        FREEBOARD_PLAIN_TEXT = #{freeboardPlainText},
         FREEBOARD_IMAGE = #{freeboardImage},
         FREEBOARD_REPRESENT_IMAGE = #{freeboardRepresentImage}
         WHERE FREEBOARD_ID = #{freeboardId}
