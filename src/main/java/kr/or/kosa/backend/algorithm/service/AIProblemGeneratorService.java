@@ -367,16 +367,97 @@ public class AIProblemGeneratorService {
     }
 
     /**
+     * AI 응답 JSON 정제
+     * - 마크다운 코드 블록 제거
+     * - 유효하지 않은 JSON 이스케이프 시퀀스 처리 (정규식 패턴 등)
+     */
+    private String sanitizeJsonResponse(String aiResponse) {
+        // null 또는 빈 문자열 체크
+        if (aiResponse == null || aiResponse.trim().isEmpty()) {
+            log.warn("AI 응답이 null이거나 비어있습니다.");
+            return "{}";
+        }
+
+        // 1. 마크다운 코드 블록 제거
+        String cleanedJson = aiResponse
+                .replaceAll("```json\\s*", "")
+                .replaceAll("```\\s*$", "")
+                .replaceAll("```", "")  // 추가: 남은 ``` 제거
+                .trim();
+
+        if (cleanedJson.isEmpty()) {
+            log.warn("마크다운 제거 후 JSON이 비어있습니다.");
+            return "{}";
+        }
+
+        // 2. 유효하지 않은 JSON 이스케이프 시퀀스를 이중 백슬래시로 변환
+        // JSON 유효 이스케이프: 큰따옴표, 백슬래시, 슬래시, b, f, n, r, t, 유니코드(u+4자리hex)
+        // 그 외 정규식 패턴(w, d, s 등)은 유효하지 않으므로 백슬래시를 이중으로 변환
+        StringBuilder result = new StringBuilder();
+        int i = 0;
+        int escapesFixed = 0;
+
+        while (i < cleanedJson.length()) {
+            char c = cleanedJson.charAt(i);
+
+            if (c == '\\') {
+                // 다음 문자가 있는지 확인
+                if (i + 1 < cleanedJson.length()) {
+                    char next = cleanedJson.charAt(i + 1);
+
+                    // 유효한 JSON 이스케이프 시퀀스 확인
+                    if (next == '"' || next == '\\' || next == '/' ||
+                        next == 'b' || next == 'f' || next == 'n' ||
+                        next == 'r' || next == 't') {
+                        // 유효한 이스케이프 - 그대로 유지
+                        result.append(c);
+                        result.append(next);
+                        i += 2;
+                    } else if (next == 'u' && i + 5 < cleanedJson.length()) {
+                        // \ uXXXX 유니코드 이스케이프 확인
+                        String hex = cleanedJson.substring(i + 2, i + 6);
+                        if (hex.matches("[0-9a-fA-F]{4}")) {
+                            result.append(cleanedJson, i, i + 6);
+                            i += 6;
+                        } else {
+                            // 유효하지 않은 유니코드 - 백슬래시 이스케이프
+                            result.append("\\\\");
+                            escapesFixed++;
+                            i += 1;
+                        }
+                    } else {
+                        // 유효하지 않은 이스케이프 - 백슬래시를 이중으로
+                        result.append("\\\\");
+                        escapesFixed++;
+                        i += 1;
+                    }
+                } else {
+                    // 문자열 끝에 단독 백슬래시 - 이스케이프 처리
+                    result.append("\\\\");
+                    escapesFixed++;
+                    i += 1;
+                }
+            } else {
+                result.append(c);
+                i += 1;
+            }
+        }
+
+        if (escapesFixed > 0) {
+            log.info("JSON 이스케이프 시퀀스 {} 개 수정됨", escapesFixed);
+        }
+
+        return result.toString();
+    }
+
+    /**
      * 문제 정보 파싱
      */
     private AlgoProblemDto parseAIProblemResponse(String aiResponse, ProblemGenerationRequestDto request)
             throws JsonProcessingException {
 
-        // JSON 전처리 (```json ``` 제거)
-        String cleanedJson = aiResponse
-                .replaceAll("```json\\s*", "")
-                .replaceAll("```\\s*$", "")
-                .trim();
+        // JSON 전처리 (```json ``` 제거 + 유효하지 않은 이스케이프 시퀀스 처리)
+        String cleanedJson = sanitizeJsonResponse(aiResponse);
 
         JsonNode jsonNode = objectMapper.readTree(cleanedJson);
 
@@ -477,11 +558,8 @@ public class AIProblemGeneratorService {
      */
     private List<AlgoTestcaseDto> parseAITestCaseResponse(String aiResponse) throws JsonProcessingException {
 
-        // JSON 전처리
-        String cleanedJson = aiResponse
-                .replaceAll("```json\\s*", "")
-                .replaceAll("```\\s*$", "")
-                .trim();
+        // JSON 전처리 (유효하지 않은 이스케이프 시퀀스 처리 포함)
+        String cleanedJson = sanitizeJsonResponse(aiResponse);
 
         JsonNode jsonNode = objectMapper.readTree(cleanedJson);
         JsonNode testCasesNode = jsonNode.get("testCases");
