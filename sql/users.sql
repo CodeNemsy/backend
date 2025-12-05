@@ -22,7 +22,7 @@ create table USERS
 );
 
 
--- users와 PK연결
+-- 필수 아님 !!! 필요시 users FK 재연결에 사용
 ALTER TABLE ALGO_SUBMISSIONS
     ADD CONSTRAINT FK_ALGO_SUBMISSION_USER
     FOREIGN KEY (USER_ID) REFERENCES USERS(USER_ID);

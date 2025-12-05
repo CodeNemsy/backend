@@ -11,6 +11,9 @@ import kr.or.kosa.backend.freeboard.mapper.FreeboardMapper;
 import kr.or.kosa.backend.tag.service.TagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +45,63 @@ public class FreeboardService {
         result.put("totalPages", (int) Math.ceil((double) totalCount / size));
 
         return result;
+    }
+
+    // 검색/정렬 기능이 포함된 게시글 목록 조회
+    public Page<FreeboardListResponseDto> getList(Pageable pageable, String keyword) {
+        int offset = (int) pageable.getOffset();
+        int pageSize = pageable.getPageSize();
+        String sortField = getSortField(pageable);
+        String sortDirection = getSortDirection(pageable);
+
+        // 전체 게시글 수 조회
+        int totalCount = mapper.countPosts(keyword);
+
+        // 게시글 목록 조회
+        List<FreeboardListResponseDto> posts = mapper.findPosts(
+                offset,
+                pageSize,
+                sortField,
+                sortDirection,
+                keyword
+        );
+
+        return new PageImpl<>(posts, pageable, totalCount);
+    }
+
+    /**
+     * 정렬 필드 추출
+     */
+    private String getSortField(Pageable pageable) {
+        if (pageable.getSort().isEmpty()) {
+            return "created_at";
+        }
+
+        String property = pageable.getSort().iterator().next().getProperty();
+
+        switch (property) {
+            case "commentCount":
+                return "comment_count";
+            case "likeCount":
+                return "like_count";
+            case "viewCount":
+            case "click":
+                return "view_count";
+            case "createdAt":
+            default:
+                return "created_at";
+        }
+    }
+
+    /**
+     * 정렬 방향 추출
+     */
+    private String getSortDirection(Pageable pageable) {
+        if (pageable.getSort().isEmpty()) {
+            return "DESC";
+        }
+
+        return pageable.getSort().iterator().next().getDirection().name();
     }
 
     @Transactional
