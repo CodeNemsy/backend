@@ -7,15 +7,19 @@ import kr.or.kosa.backend.algorithm.dto.enums.ProblemDifficulty;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemSource;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemType;
 import kr.or.kosa.backend.algorithm.dto.external.LeetCodeProblemDto;
+import kr.or.kosa.backend.algorithm.dto.external.ProblemDocumentDto;
 import kr.or.kosa.backend.algorithm.dto.external.SolvedAcProblemDto;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;
+import kr.or.kosa.backend.algorithm.service.external.BojCrawler;
 import kr.or.kosa.backend.algorithm.service.external.LeetCodeApiClient;
+import kr.or.kosa.backend.algorithm.service.external.LeetCodeCrawler;
 import kr.or.kosa.backend.algorithm.service.external.SolvedAcApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,9 +34,12 @@ public class ProblemCrawlerService {
 
     private final SolvedAcApiClient solvedAcApiClient;
     private final LeetCodeApiClient leetCodeApiClient;
+    private final LeetCodeCrawler leetCodeCrawler;
     private final ProblemRewriteService rewriteService;
     private final AlgorithmProblemMapper problemMapper;
     private final ObjectMapper objectMapper;
+    private final BojCrawler bojCrawler;
+    private final ProblemVectorStoreService vectorStoreService;
 
     /**
      * 백준 문제 일괄 가져오기
@@ -280,5 +287,242 @@ public class ProblemCrawlerService {
                 LeetCode: %d개
                 ━━━━━━━━━━━━━━━━━━━━━━
                 """, totalProblems, bojCount, leetCodeCount);
+    }
+
+    // ===== Vector DB 전용 메서드 =====
+
+    /**
+     * BOJ 문제를 Vector DB에 수집 (RAG용)
+     * MySQL 저장 없이 Vector DB에만 저장
+     *
+     * @param query      검색 쿼리 (예: "*s", "tier:g")
+     * @param totalCount 수집할 문제 수
+     * @return 저장된 문제 수
+     */
+    public int collectBojToVectorDb(String query, int totalCount) {
+        log.info("🚀 BOJ → Vector DB 수집 시작: query={}, count={}", query, totalCount);
+
+        List<ProblemDocumentDto> documents = new ArrayList<>();
+        int page = 1;
+        int maxPages = (totalCount / 50) + 1;
+
+        while (documents.size() < totalCount && page <= maxPages) {
+            List<SolvedAcProblemDto> problems = solvedAcApiClient.searchProblems(query, page);
+
+            if (problems.isEmpty()) {
+                log.info("더 이상 문제가 없습니다.");
+                break;
+            }
+
+            for (SolvedAcProblemDto problem : problems) {
+                if (documents.size() >= totalCount) break;
+
+                try {
+                    ProblemDocumentDto doc = bojCrawler.crawlProblemDetail(problem);
+                    documents.add(doc);
+                    log.info("📥 크롤링 완료: {}/{} - {}",
+                            documents.size(), totalCount, doc.getTitle());
+
+                    // Rate Limiting 방지 (BOJ 크롤링)
+                    sleep(500);
+                } catch (Exception e) {
+                    log.error("크롤링 실패: {}", problem.getTitleKo(), e);
+                }
+            }
+
+            page++;
+            sleep(1000); // solved.ac API Rate Limiting
+        }
+
+        // Vector DB에 일괄 저장
+        if (!documents.isEmpty()) {
+            int savedCount = vectorStoreService.storeProblems(documents);
+            log.info("✅ Vector DB 저장 완료: {}개 문제", savedCount);
+            return savedCount;
+        }
+
+        return 0;
+    }
+
+    /**
+     * BOJ 문제를 MySQL + Vector DB 모두에 저장
+     *
+     * @param query        검색 쿼리
+     * @param totalCount   수집할 문제 수
+     * @param useAiRewrite AI 재서술 사용 여부
+     * @return 저장된 문제 수
+     */
+    @Transactional
+    public int fetchBojProblemsWithVectorDb(String query, int totalCount, boolean useAiRewrite) {
+        log.info("🚀 BOJ → MySQL + Vector DB 수집 시작: query={}, count={}, useAI={}",
+                query, totalCount, useAiRewrite);
+
+        AtomicInteger savedCount = new AtomicInteger(0);
+        List<ProblemDocumentDto> vectorDocs = new ArrayList<>();
+        int page = 1;
+        int maxPages = (totalCount / 50) + 1;
+
+        while (savedCount.get() < totalCount && page <= maxPages) {
+            List<SolvedAcProblemDto> problems = solvedAcApiClient.searchProblems(query, page);
+
+            if (problems.isEmpty()) {
+                log.info("더 이상 문제가 없습니다.");
+                break;
+            }
+
+            for (SolvedAcProblemDto problem : problems) {
+                if (savedCount.get() >= totalCount) break;
+
+                try {
+                    // 1. MySQL에 저장
+                    if (saveBojProblem(problem, useAiRewrite)) {
+                        savedCount.incrementAndGet();
+
+                        // 2. Vector DB용 문서 크롤링
+                        ProblemDocumentDto doc = bojCrawler.crawlProblemDetail(problem);
+                        vectorDocs.add(doc);
+
+                        log.info("진행률: {}/{}", savedCount.get(), totalCount);
+                        sleep(500); // BOJ 크롤링 Rate Limiting
+                    }
+                } catch (Exception e) {
+                    log.error("문제 저장 실패: {}", problem.getTitleKo(), e);
+                }
+            }
+
+            page++;
+            sleep(1000);
+        }
+
+        // Vector DB에 일괄 저장
+        if (!vectorDocs.isEmpty()) {
+            vectorStoreService.storeProblems(vectorDocs);
+            log.info("✅ Vector DB 저장 완료: {}개 문제", vectorDocs.size());
+        }
+
+        log.info("✅ 전체 저장 완료: MySQL={}개, Vector DB={}개",
+                savedCount.get(), vectorDocs.size());
+        return savedCount.get();
+    }
+
+    /**
+     * LeetCode 문제를 Vector DB에 수집 (RAG용)
+     * MySQL 저장 없이 Vector DB에만 저장
+     *
+     * @param totalCount 수집할 문제 수
+     * @param difficulty 난이도 필터 (null이면 전체)
+     * @return 저장된 문제 수
+     */
+    public int collectLeetCodeToVectorDb(int totalCount, String difficulty) {
+        log.info("🚀 LeetCode → Vector DB 수집 시작: count={}, difficulty={}",
+                totalCount, difficulty);
+
+        List<ProblemDocumentDto> documents = new ArrayList<>();
+        int iterations = (totalCount / 20) + 1;
+
+        for (int i = 0; i < iterations && documents.size() < totalCount; i++) {
+            List<LeetCodeProblemDto> problems = leetCodeApiClient.getProblems(20, null, difficulty);
+
+            if (problems.isEmpty()) {
+                log.info("더 이상 문제가 없습니다.");
+                break;
+            }
+
+            for (LeetCodeProblemDto problem : problems) {
+                if (documents.size() >= totalCount) break;
+
+                // 유료 문제 제외
+                if (Boolean.TRUE.equals(problem.getIsPaidOnly())) {
+                    continue;
+                }
+
+                try {
+                    ProblemDocumentDto doc = leetCodeCrawler.crawlProblemDetail(problem);
+                    documents.add(doc);
+                    log.info("📥 크롤링 완료: {}/{} - {}",
+                            documents.size(), totalCount, doc.getTitle());
+
+                    // Rate Limiting 방지
+                    sleep(1000);
+                } catch (Exception e) {
+                    log.error("크롤링 실패: {}", problem.getTitle(), e);
+                }
+            }
+
+            sleep(2000); // alfa-leetcode-api Rate Limiting
+        }
+
+        // Vector DB에 일괄 저장
+        if (!documents.isEmpty()) {
+            int savedCount = vectorStoreService.storeProblems(documents);
+            log.info("✅ Vector DB 저장 완료: {}개 문제", savedCount);
+            return savedCount;
+        }
+
+        return 0;
+    }
+
+    /**
+     * LeetCode 문제를 MySQL + Vector DB 모두에 저장
+     *
+     * @param totalCount   수집할 문제 수
+     * @param useAiRewrite AI 재서술 사용 여부
+     * @param difficulty   난이도 필터 (null이면 전체)
+     * @return 저장된 문제 수
+     */
+    @Transactional
+    public int fetchLeetCodeProblemsWithVectorDb(int totalCount, boolean useAiRewrite, String difficulty) {
+        log.info("🚀 LeetCode → MySQL + Vector DB 수집 시작: count={}, useAI={}, difficulty={}",
+                totalCount, useAiRewrite, difficulty);
+
+        AtomicInteger savedCount = new AtomicInteger(0);
+        List<ProblemDocumentDto> vectorDocs = new ArrayList<>();
+        int iterations = (totalCount / 20) + 1;
+
+        for (int i = 0; i < iterations && savedCount.get() < totalCount; i++) {
+            List<LeetCodeProblemDto> problems = leetCodeApiClient.getProblems(20, null, difficulty);
+
+            if (problems.isEmpty()) {
+                log.info("더 이상 문제가 없습니다.");
+                break;
+            }
+
+            for (LeetCodeProblemDto problem : problems) {
+                if (savedCount.get() >= totalCount) break;
+
+                // 유료 문제 제외
+                if (Boolean.TRUE.equals(problem.getIsPaidOnly())) {
+                    continue;
+                }
+
+                try {
+                    // 1. MySQL에 저장
+                    if (saveLeetCodeProblem(problem, useAiRewrite)) {
+                        savedCount.incrementAndGet();
+
+                        // 2. Vector DB용 문서 크롤링
+                        ProblemDocumentDto doc = leetCodeCrawler.crawlProblemDetail(problem);
+                        vectorDocs.add(doc);
+
+                        log.info("진행률: {}/{}", savedCount.get(), totalCount);
+                        sleep(1000);
+                    }
+                } catch (Exception e) {
+                    log.error("문제 저장 실패: {}", problem.getTitle(), e);
+                }
+            }
+
+            sleep(2000);
+        }
+
+        // Vector DB에 일괄 저장
+        if (!vectorDocs.isEmpty()) {
+            vectorStoreService.storeProblems(vectorDocs);
+            log.info("✅ Vector DB 저장 완료: {}개 문제", vectorDocs.size());
+        }
+
+        log.info("✅ 전체 저장 완료: MySQL={}개, Vector DB={}개",
+                savedCount.get(), vectorDocs.size());
+        return savedCount.get();
     }
 }

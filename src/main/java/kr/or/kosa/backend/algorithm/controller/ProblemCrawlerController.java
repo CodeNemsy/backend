@@ -1,12 +1,17 @@
 package kr.or.kosa.backend.algorithm.controller;
 
+import kr.or.kosa.backend.algorithm.dto.request.BojCrawlRequest;
+import kr.or.kosa.backend.algorithm.dto.request.LeetCodeCrawlRequest;
+import kr.or.kosa.backend.algorithm.dto.request.VectorDbCrawlRequest;
 import kr.or.kosa.backend.algorithm.service.ProblemCrawlerService;
-import lombok.Data;
+import kr.or.kosa.backend.algorithm.service.ProblemVectorStoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.document.Document;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,11 +20,12 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/admin/crawler")
+@RequestMapping("crawler")
 @RequiredArgsConstructor
 public class ProblemCrawlerController {
 
     private final ProblemCrawlerService crawlerService;
+    private final ProblemVectorStoreService vectorStoreService;
 
     /**
      * 백준 문제 크롤링
@@ -119,19 +125,237 @@ public class ProblemCrawlerController {
         }
     }
 
-    // ===== Request DTOs =====
+    // ===== Vector DB 전용 API =====
 
-    @Data
-    public static class BojCrawlRequest {
-        private String query;           // 검색 쿼리 (예: "*s", "tier:b")
-        private Integer count;          // 가져올 문제 수
-        private Boolean useAiRewrite;   // AI 재서술 사용 여부
+    /**
+     * BOJ 문제를 Vector DB에만 수집 (RAG용)
+     *
+     * POST /api/admin/crawler/vectordb/boj
+     * Body: {
+     *   "query": "*s",     // 검색 쿼리
+     *   "count": 100       // 수집할 문제 수
+     * }
+     */
+    @PostMapping("/vectordb/boj")
+    public ResponseEntity<?> collectBojToVectorDb(@RequestBody VectorDbCrawlRequest request) {
+        log.info("📥 BOJ → Vector DB 수집 요청: {}", request);
+
+        try {
+            String query = request.getQuery() != null ? request.getQuery() : "*s";
+            int count = request.getCount() != null ? request.getCount() : 100;
+
+            int savedCount = crawlerService.collectBojToVectorDb(query, count);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "BOJ 문제 Vector DB 수집 완료",
+                    "savedCount", savedCount,
+                    "query", query,
+                    "target", "VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("Vector DB 수집 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "수집 중 오류 발생: " + e.getMessage()
+            ));
+        }
     }
 
-    @Data
-    public static class LeetCodeCrawlRequest {
-        private Integer count;          // 가져올 문제 수
-        private Boolean useAiRewrite;   // AI 재서술 사용 여부
-        private String difficulty;      // 난이도 (EASY, MEDIUM, HARD)
+    /**
+     * BOJ 문제를 MySQL + Vector DB 모두에 수집
+     *
+     * POST /api/admin/crawler/boj/full
+     * Body: {
+     *   "query": "*s",
+     *   "count": 50,
+     *   "useAiRewrite": false
+     * }
+     */
+    @PostMapping("/boj/full")
+    public ResponseEntity<?> crawlBojWithVectorDb(@RequestBody BojCrawlRequest request) {
+        log.info("📥 BOJ → MySQL + Vector DB 수집 요청: {}", request);
+
+        try {
+            String query = request.getQuery() != null ? request.getQuery() : "*s";
+            int count = request.getCount() != null ? request.getCount() : 50;
+            boolean useAi = request.getUseAiRewrite() != null ? request.getUseAiRewrite() : false;
+
+            int savedCount = crawlerService.fetchBojProblemsWithVectorDb(query, count, useAi);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "BOJ 문제 MySQL + Vector DB 수집 완료",
+                    "savedCount", savedCount,
+                    "query", query,
+                    "useAiRewrite", useAi,
+                    "target", "MySQL + VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("전체 수집 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "수집 중 오류 발생: " + e.getMessage()
+            ));
+        }
     }
+
+    /**
+     * LeetCode 문제를 Vector DB에만 수집 (RAG용)
+     *
+     * POST /api/admin/crawler/vectordb/leetcode
+     * Body: {
+     *   "count": 50,           // 수집할 문제 수
+     *   "difficulty": "MEDIUM" // 난이도 필터 (선택)
+     * }
+     */
+    @PostMapping("/vectordb/leetcode")
+    public ResponseEntity<?> collectLeetCodeToVectorDb(@RequestBody LeetCodeCrawlRequest request) {
+        log.info("📥 LeetCode → Vector DB 수집 요청: {}", request);
+
+        try {
+            int count = request.getCount() != null ? request.getCount() : 50;
+            String difficulty = request.getDifficulty();
+
+            int savedCount = crawlerService.collectLeetCodeToVectorDb(count, difficulty);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "LeetCode 문제 Vector DB 수집 완료",
+                    "savedCount", savedCount,
+                    "difficulty", difficulty != null ? difficulty : "ALL",
+                    "target", "VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("Vector DB 수집 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "수집 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * LeetCode 문제를 MySQL + Vector DB 모두에 수집
+     *
+     * POST /api/admin/crawler/leetcode/full
+     * Body: {
+     *   "count": 20,
+     *   "useAiRewrite": false,
+     *   "difficulty": "EASY"
+     * }
+     */
+    @PostMapping("/leetcode/full")
+    public ResponseEntity<?> crawlLeetCodeWithVectorDb(@RequestBody LeetCodeCrawlRequest request) {
+        log.info("📥 LeetCode → MySQL + Vector DB 수집 요청: {}", request);
+
+        try {
+            int count = request.getCount() != null ? request.getCount() : 20;
+            boolean useAi = request.getUseAiRewrite() != null ? request.getUseAiRewrite() : false;
+            String difficulty = request.getDifficulty();
+
+            int savedCount = crawlerService.fetchLeetCodeProblemsWithVectorDb(count, useAi, difficulty);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "LeetCode 문제 MySQL + Vector DB 수집 완료",
+                    "savedCount", savedCount,
+                    "difficulty", difficulty != null ? difficulty : "ALL",
+                    "useAiRewrite", useAi,
+                    "target", "MySQL + VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("전체 수집 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "수집 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
+    // ===== Vector DB 검색 API =====
+
+    /**
+     * Vector DB에서 유사 문제 검색
+     *
+     * GET /api/admin/crawler/vectordb/search?query=동적 프로그래밍&topK=5
+     */
+    @GetMapping("/vectordb/search")
+    public ResponseEntity<?> searchVectorDb(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "5") int topK) {
+        log.info("🔍 Vector DB 검색: query='{}', topK={}", query, topK);
+
+        try {
+            List<Document> results = vectorStoreService.searchSimilarProblems(query, topK);
+
+            List<Map<String, Object>> resultList = results.stream()
+                    .map(doc -> Map.of(
+                            "id", doc.getId(),
+                            "content", doc.getText().substring(0, Math.min(500, doc.getText().length())) + "...",
+                            "metadata", doc.getMetadata()
+                    ))
+                    .toList();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "query", query,
+                    "count", results.size(),
+                    "results", resultList
+            ));
+
+        } catch (Exception e) {
+            log.error("Vector DB 검색 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "검색 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Few-shot 학습용 예시 문제 검색
+     *
+     * GET /api/admin/crawler/vectordb/fewshot?topic=그래프&difficulty=SILVER&count=3
+     */
+    @GetMapping("/vectordb/fewshot")
+    public ResponseEntity<?> getFewShotExamples(
+            @RequestParam String topic,
+            @RequestParam(defaultValue = "SILVER") String difficulty,
+            @RequestParam(defaultValue = "3") int count) {
+        log.info("🎯 Few-shot 예시 검색: topic='{}', difficulty={}, count={}",
+                topic, difficulty, count);
+
+        try {
+            List<Document> results = vectorStoreService.getFewShotExamples(topic, difficulty, count);
+
+            List<Map<String, Object>> resultList = results.stream()
+                    .map(doc -> Map.of(
+                            "id", doc.getId(),
+                            "content", doc.getText(),
+                            "metadata", doc.getMetadata()
+                    ))
+                    .toList();
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "topic", topic,
+                    "difficulty", difficulty,
+                    "count", results.size(),
+                    "examples", resultList
+            ));
+
+        } catch (Exception e) {
+            log.error("Few-shot 검색 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "검색 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
 }

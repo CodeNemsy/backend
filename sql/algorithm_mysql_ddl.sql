@@ -2,29 +2,35 @@
 -- AUTO_INCREMENT 적용된 최종 알고리즘 도메인 MySQL DDL
 -- =============================================
 -- 데이터베이스 생성
-CREATE DATABASE IF NOT EXISTS `algorithm_platform` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `algorithm_platform`;
+CREATE DATABASE IF NOT EXISTS `algo` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `algo`;
 -- =============================================
 -- 0. 사용자 테이블 (외래키 참조를 위해 먼저 생성)
 -- =============================================
--- CREATE TABLE `USERS` (
---     `USER_ID` BIGINT AUTO_INCREMENT PRIMARY KEY,
---     `USER_EMAIL` VARCHAR(255) NOT NULL,
---     `USER_PW` VARCHAR(255) NOT NULL,
---     `USER_NAME` VARCHAR(100) NOT NULL,
---     `USER_NICKNAME` VARCHAR(50) NOT NULL,
---     `USER_IMAGE` VARCHAR(500) NULL,
---     `USER_GRADE` INT DEFAULT 1 NOT NULL,
---     `USER_ROLE` ENUM('ROLE_USER', 'ROLE_ADMIN') DEFAULT 'ROLE_USER' NOT NULL,
---     `USER_ISDELETED` TINYINT(1) DEFAULT 0 NOT NULL,
---     `USER_DELETEDAT` DATETIME NULL,
---     `USER_CREATEDAT` DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
---     `USER_UPDATEDAT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
---     `USER_ENABLED` TINYINT(1) DEFAULT 1 NOT NULL,
---     `USER_ISSUBSCRIBED` TINYINT(1) DEFAULT 0 NOT NULL,
---     CONSTRAINT `UQ_USERS_EMAIL` UNIQUE (`USER_EMAIL`),
---     CONSTRAINT `UQ_USERS_NICKNAME` UNIQUE (`USER_NICKNAME`)
--- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자';
+    create table USERS
+(
+    USER_ID           bigint auto_increment
+        primary key,
+    USER_EMAIL        varchar(255)                                               not null,
+    USER_PW           varchar(255)                                               not null,
+    USER_NAME         varchar(100)                                               not null,
+    USER_NICKNAME     varchar(50)                                                not null,
+    USER_IMAGE        varchar(500)                                               null,
+    USER_GRADE        int                              default 1                 not null,
+    USER_ROLE         enum ('ROLE_USER', 'ROLE_ADMIN') default 'ROLE_USER'       not null,
+    USER_ISDELETED    tinyint(1)                       default 0                 not null,
+    USER_DELETEDAT    datetime                                                   null,
+    USER_CREATEDAT    datetime                         default CURRENT_TIMESTAMP not null,
+    USER_UPDATEDAT    datetime                         default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    USER_ENABLED      tinyint(1)                       default 1                 not null,
+    USER_ISSUBSCRIBED tinyint(1)                       default 0                 not null,
+    constraint UQ_USERS_EMAIL
+        unique (USER_EMAIL),
+    constraint UQ_USERS_NICKNAME
+        unique (USER_NICKNAME)
+);
+INSERT INTO USERS (USER_ID, USER_EMAIL, USER_PW, USER_NAME, USER_NICKNAME, USER_IMAGE, USER_GRADE, USER_ROLE, USER_ISDELETED, USER_DELETEDAT, USER_CREATEDAT, USER_UPDATEDAT, USER_ENABLED, USER_ISSUBSCRIBED) 
+VALUES (1, 'dummyuser@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz0123456789.hashed.password.string', '테스트사용자', '더미닉네임1', NULL, 1, 'ROLE_USER', 0, NULL, NOW(), NOW(), 1, 0);
 -- =============================================
 -- 1. 알고리즘 문제 테이블 (SQL 문제 지원 추가)
 -- =============================================
@@ -212,196 +218,102 @@ ALTER TABLE `GITHUB_COMMITS` AUTO_INCREMENT = 1;
 -- =============================================
 -- 언어별 상수 데이터 삽입 (제공된 표 반영 + LANGUAGE_TYPE)
 -- =============================================
-INSERT INTO `LANGUAGE_CONSTANTS` (
-        `LANGUAGE_NAME`,
-        `LANGUAGE_TYPE`,
-        `TIME_FACTOR`,
-        `TIME_ADDITION`,
-        `MEMORY_FACTOR`,
-        `MEMORY_ADDITION`
-    )
-VALUES -- C/C++ 계열 (기본값)
-    ('C++17', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C11', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C99', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++98', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++11', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++14', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++20', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++23', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++26', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C++ (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C17', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C23', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C90', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C2x', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C90 (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C2x (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-    -- Java 계열 (x2 + 1초, x2 + 16MB)
-    ('Java 8', 'GENERAL', 2.0, 1000, 2.0, 16),
-    (
-        'Java 8 (OpenJDK)',
-        'GENERAL',
-        2.0,
-        1000,
-        2.0,
-        16
-    ),
-    ('Java 11', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java 15', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java (JDK 17)', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java (JDK 21)', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java 17', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java 21', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Java 19', 'GENERAL', 2.0, 1000, 2.0, 16),
-    -- Python 계열 (x3 + 2초, x2 + 32MB/128MB)
-    ('Python 3', 'GENERAL', 3.0, 2000, 2.0, 32),
-    ('PyPy3', 'GENERAL', 3.0, 2000, 2.0, 128),
-    ('Python 2', 'GENERAL', 3.0, 2000, 2.0, 32),
-    ('PyPy2', 'GENERAL', 3.0, 2000, 2.0, 128),
-    -- 기타 언어
-    ('Ruby', 'GENERAL', 2.0, 1000, 1.0, 512),
-    ('Kotlin (JVM)', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Kotlin (Native)', 'GENERAL', 1.0, 0, 1.0, 16),
-    ('Swift', 'GENERAL', 1.0, 0, 1.0, 512),
-    ('Swift (Apple)', 'GENERAL', 1.0, 0, 1.0, 512),
-    ('Text', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('C#', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('node.js', 'GENERAL', 3.0, 2000, 2.0, 2),
-    ('Go', 'GENERAL', 1.0, 2000, 1.0, 512),
-    ('Go (gccgo)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('D', 'GENERAL', 1.0, 0, 1.0, 16),
-    ('D (LDC)', 'GENERAL', 1.0, 0, 1.0, 16),
-    ('F# (Mono)', 'GENERAL', 3.0, 2000, 2.0, 32),
-    ('Pascal', 'GENERAL', 1.0, 0, 1.0, 64),
-    ('Haskell', 'GENERAL', 2.0, 1000, 1.0, 16),
-    ('Rust 2018', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Rust 2021', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Rust', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Lua', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('Perl', 'GENERAL', 3.0, 2000, 2.0, 16),
-    ('PHP', 'GENERAL', 3.0, 2000, 2.0, 16),
-    ('Clojure', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Fortran', 'GENERAL', 1.0, 0, 1.0, 0),
-    (
-        'Scheme (Chicken)',
-        'GENERAL',
-        3.0,
-        2000,
-        2.0,
-        32
-    ),
-    ('Scheme (Racket)', 'GENERAL', 3.0, 2000, 2.0, 16),
-    ('Assembly (32bit)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Assembly (64bit)', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Objective-C', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Objective-C++', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('아희 (Aheui)', 'GENERAL', 1.0, 2000, 1.0, 64),
-    (
-        '아희 (Aheui) (Bok-sil)',
-        'GENERAL',
-        1.0,
-        2000,
-        1.0,
-        64
-    ),
-    ('아희 (Aheui) (C)', 'GENERAL', 1.0, 1000, 1.0, 0),
-    ('Golfscript', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('Brainf**k', 'GENERAL', 1.0, 1000, 1.0, 0),
-    ('Whitespace', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Tcl', 'GENERAL', 1.0, 2000, 1.0, 512),
-    ('Rhino', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Cobol', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Pike', 'GENERAL', 3.0, 2000, 2.0, 16),
-    ('Sed', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('Bash', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('Ada', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('AWK', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('OCaml', 'GENERAL', 1.0, 0, 1.0, 64),
-    ('Perl 6', 'GENERAL', 3.0, 2000, 2.0, 16),
-    ('Vim', 'GENERAL', 1.0, 2000, 1.0, 64),
-    ('Haxe', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Nim', 'GENERAL', 1.0, 0, 1.0, 16),
-    ('Algol 68', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Befunge', 'GENERAL', 1.0, 0, 1.0, 32),
-    ('Ceylon', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Pony', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Nemerle', 'GENERAL', 1.0, 5000, 1.0, 512),
-    ('Cobra', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('Nimrod', 'GENERAL', 1.0, 0, 1.0, 0),
-    ('Pascal (FPC)', 'GENERAL', 1.0, 0, 1.0, 64),
-    ('TypeScript', 'GENERAL', 3.0, 2000, 2.0, 2),
-    ('Visual Basic', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('MonoDevelop C#', 'GENERAL', 2.0, 1000, 2.0, 16),
-    ('F# (.NET)', 'GENERAL', 2.0, 1000, 2.0, 16),
-    -- DB 언어 (SQL 문제용)
-    ('MySQL', 'DB', 1.0, 0, 1.0, 0),
-    ('PostgreSQL', 'DB', 1.0, 0, 1.0, 0),
-    ('SQLite', 'DB', 1.0, 0, 1.0, 0);
+INSERT INTO LANGUAGE_CONSTANTS (LANGUAGE_NAME, LANGUAGE_TYPE, TIME_FACTOR, TIME_ADDITION, MEMORY_FACTOR, MEMORY_ADDITION) VALUES
+('C++17', 'GENERAL', 1.0, 0, 1.0, 0), ('C11', 'GENERAL', 1.0, 0, 1.0, 0), ('C99', 'GENERAL', 1.0, 0, 1.0, 0), ('C++98', 'GENERAL', 1.0, 0, 1.0, 0),
+('C++11', 'GENERAL', 1.0, 0, 1.0, 0), ('C++14', 'GENERAL', 1.0, 0, 1.0, 0), ('C++20', 'GENERAL', 1.0, 0, 1.0, 0), ('C++23', 'GENERAL', 1.0, 0, 1.0, 0),
+('C++26', 'GENERAL', 1.0, 0, 1.0, 0), ('C (Clang)', 'GENERAL', 1.0, 0, 1.0, 0), ('C++ (Clang)', 'GENERAL', 1.0, 0, 1.0, 0), ('C17', 'GENERAL', 1.0, 0, 1.0, 0),
+('C23', 'GENERAL', 1.0, 0, 1.0, 0), ('C90', 'GENERAL', 1.0, 0, 1.0, 0), ('C2x', 'GENERAL', 1.0, 0, 1.0, 0), ('C90 (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
+('C2x (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
+('Java 8', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 8 (OpenJDK)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 11', 'GENERAL', 2.0, 1000, 2.0, 16),
+('Java 15', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java (JDK 17)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java (JDK 21)', 'GENERAL', 2.0, 1000, 2.0, 16),
+('Java 17', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 21', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 19', 'GENERAL', 2.0, 1000, 2.0, 16),
+('Python 3', 'GENERAL', 3.0, 2000, 2.0, 32), ('PyPy3', 'GENERAL', 3.0, 2000, 2.0, 128), ('Python 2', 'GENERAL', 3.0, 2000, 2.0, 32),
+('PyPy2', 'GENERAL', 3.0, 2000, 2.0, 128),
+('Ruby', 'GENERAL', 2.0, 1000, 1.0, 512), ('Kotlin (JVM)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Kotlin (Native)', 'GENERAL', 1.0, 0, 1.0, 16),
+('Swift', 'GENERAL', 1.0, 0, 1.0, 512), ('Swift (Apple)', 'GENERAL', 1.0, 0, 1.0, 512), ('Text', 'GENERAL', 1.0, 0, 1.0, 0),
+('C#', 'GENERAL', 2.0, 1000, 2.0, 16), ('node.js', 'GENERAL', 3.0, 2000, 2.0, 2), ('Go', 'GENERAL', 1.0, 2000, 1.0, 512),
+('Go (gccgo)', 'GENERAL', 1.0, 0, 1.0, 0), ('D', 'GENERAL', 1.0, 0, 1.0, 16), ('D (LDC)', 'GENERAL', 1.0, 0, 1.0, 16),
+('F# (Mono)', 'GENERAL', 3.0, 2000, 2.0, 32), ('Pascal', 'GENERAL', 1.0, 0, 1.0, 64), ('Haskell', 'GENERAL', 2.0, 1000, 1.0, 16),
+('Rust 2018', 'GENERAL', 1.0, 0, 1.0, 0), ('Rust 2021', 'GENERAL', 1.0, 0, 1.0, 0), ('Rust', 'GENERAL', 1.0, 0, 1.0, 0),
+('Lua', 'GENERAL', 1.0, 2000, 1.0, 64), ('Perl', 'GENERAL', 3.0, 2000, 2.0, 16), ('PHP', 'GENERAL', 3.0, 2000, 2.0, 16),
+('Clojure', 'GENERAL', 2.0, 1000, 2.0, 16), ('Fortran', 'GENERAL', 1.0, 0, 1.0, 0), ('Scheme (Chicken)', 'GENERAL', 3.0, 2000, 2.0, 32),
+('Scheme (Racket)', 'GENERAL', 3.0, 2000, 2.0, 16), ('Assembly (32bit)', 'GENERAL', 1.0, 0, 1.0, 0), ('Assembly (64bit)', 'GENERAL', 1.0, 0, 1.0, 0),
+('Objective-C', 'GENERAL', 1.0, 0, 1.0, 0), ('Objective-C++', 'GENERAL', 1.0, 0, 1.0, 0), ('아희 (Aheui)', 'GENERAL', 1.0, 2000, 1.0, 64),
+('아희 (Aheui) (Bok-sil)', 'GENERAL', 1.0, 2000, 1.0, 64), ('아희 (Aheui) (C)', 'GENERAL', 1.0, 1000, 1.0, 0), ('Golfscript', 'GENERAL', 1.0, 2000, 1.0, 64),
+('Brainf**k', 'GENERAL', 1.0, 1000, 1.0, 0), ('Whitespace', 'GENERAL', 1.0, 0, 1.0, 0), ('Tcl', 'GENERAL', 1.0, 2000, 1.0, 512),
+('Rhino', 'GENERAL', 2.0, 1000, 2.0, 16), ('Cobol', 'GENERAL', 1.0, 0, 1.0, 0), ('Pike', 'GENERAL', 3.0, 2000, 2.0, 16),
+('Sed', 'GENERAL', 1.0, 2000, 1.0, 64), ('Bash', 'GENERAL', 1.0, 2000, 1.0, 64), ('Ada', 'GENERAL', 1.0, 0, 1.0, 0),
+('AWK', 'GENERAL', 1.0, 2000, 1.0, 64), ('OCaml', 'GENERAL', 1.0, 0, 1.0, 64), ('Perl 6', 'GENERAL', 3.0, 2000, 2.0, 16),
+('Vim', 'GENERAL', 1.0, 2000, 1.0, 64), ('Haxe', 'GENERAL', 2.0, 1000, 2.0, 16), ('Nim', 'GENERAL', 1.0, 0, 1.0, 16),
+('Algol 68', 'GENERAL', 1.0, 0, 1.0, 0), ('Befunge', 'GENERAL', 1.0, 0, 1.0, 32), ('Ceylon', 'GENERAL', 2.0, 1000, 2.0, 16),
+('Pony', 'GENERAL', 1.0, 0, 1.0, 0), ('Nemerle', 'GENERAL', 1.0, 5000, 1.0, 512), ('Cobra', 'GENERAL', 2.0, 1000, 2.0, 16),
+('Nimrod', 'GENERAL', 1.0, 0, 1.0, 0), ('Pascal (FPC)', 'GENERAL', 1.0, 0, 1.0, 64), ('TypeScript', 'GENERAL', 3.0, 2000, 2.0, 2),
+('Visual Basic', 'GENERAL', 2.0, 1000, 2.0, 16), ('MonoDevelop C#', 'GENERAL', 2.0, 1000, 2.0, 16), ('F# (.NET)', 'GENERAL', 2.0, 1000, 2.0, 16),
+('MySQL', 'DB', 1.0, 0, 1.0, 0), ('PostgreSQL', 'DB', 1.0, 0, 1.0, 0), ('SQLite', 'DB', 1.0, 0, 1.0, 0);
 -- =============================================
 -- 샘플 데이터 삽입 (문제)
 -- =============================================
-INSERT INTO `ALGO_PROBLEMS` (
-        `ALGO_PROBLEM_TITLE`,
-        `ALGO_PROBLEM_DESCRIPTION`,
-        `ALGO_PROBLEM_DIFFICULTY`,
-        `ALGO_PROBLEM_SOURCE`,
-        `PROBLEM_TYPE`,
-        `TIMELIMIT`,
-        `MEMORYLIMIT`,
-        `ALGO_PROBLEM_TAGS`
-    )
-VALUES (
-        '두 수의 합',
-        '두 정수를 입력받아 합을 출력하는 프로그램을 작성하시오.',
-        'BRONZE',
-        'BOJ',
-        'ALGORITHM',
-        1000,
-        128,
-        '["수학", "구현"]'
-    ),
-    (
-        '피보나치 수',
-        'n번째 피보나치 수를 구하는 프로그램을 작성하시오.',
-        'SILVER',
-        'AI_GENERATED',
-        'ALGORITHM',
-        2000,
-        256,
-        '["동적프로그래밍", "수학"]'
-    ),
-    (
-        '최단경로',
-        '그래프에서 최단경로를 구하는 프로그램을 작성하시오.',
-        'GOLD',
-        'CUSTOM',
-        'ALGORITHM',
-        3000,
-        512,
-        '["그래프", "다익스트라"]'
-    );
--- 샘플 테스트케이스
-INSERT INTO `ALGO_TESTCASES` (
-        `ALGO_PROBLEM_ID`,
-        `INPUT_DATA`,
-        `EXPECTED_OUTPUT`,
-        `IS_SAMPLE`
-    )
-VALUES (1, '1 2', '3', 1),
-    (1, '5 7', '12', 1),
-    (1, '0 0', '0', 0),
-    (2, '1', '1', 1),
-    (2, '5', '5', 1),
-    (2, '10', '55', 0);
+/* 1. ALGO_PROBLEMS 더미 데이터 삽입 */
+INSERT INTO ALGO_PROBLEMS (ALGO_PROBLEM_TITLE, ALGO_PROBLEM_DESCRIPTION, ALGO_PROBLEM_DIFFICULTY, ALGO_PROBLEM_SOURCE, PROBLEM_TYPE, INIT_SCRIPT, TIMELIMIT, MEMORYLIMIT, ALGO_CREATER, ALGO_PROBLEM_TAGS, ALGO_PROBLEM_STATUS) VALUES
+('A+B 계산하기', '두 정수 A와 B를 입력받아 A+B를 출력하세요.', 'BRONZE', 'AI_GENERATED', 'ALGORITHM', NULL, 1000, 256, 1, '["수학", "사칙연산"]', 1),
+('최댓값 찾기', 'N개의 정수가 주어질 때, 이 중 최댓값을 찾으세요.', 'SILVER', 'BOJ', 'ALGORITHM', NULL, 2000, 512, 1, '["구현", "정렬"]', 1),
+('피보나치 수열 (DP)', 'N번째 피보나치 수를 구하세요. (N <= 40)', 'SILVER', 'CUSTOM', 'ALGORITHM', NULL, 1000, 256, 1, '["다이나믹 프로그래밍", "재귀"]', 1),
+('미로 탈출 최단 경로', '(1, 1)에서 (N, M)까지의 최단 경로 길이를 BFS로 구하세요.', 'GOLD', 'AI_GENERATED', 'ALGORITHM', NULL, 5000, 512, 1, '["그래프 이론", "BFS"]', 1),
+('가장 긴 증가하는 부분 수열 (LIS)', '가장 긴 증가하는 부분 수열의 길이를 구하는 문제입니다.', 'PLATINUM', 'BOJ', 'ALGORITHM', NULL, 3000, 512, 1, '["다이나믹 프로그래밍", "이분 탐색"]', 1),
+('SQL 1. 모든 학생 조회', 'STUDENTS 테이블의 모든 컬럼을 조회하세요.', 'BRONZE', 'AI_GENERATED', 'SQL',
+    'CREATE TABLE STUDENTS (STUDENT_ID INT PRIMARY KEY, NAME VARCHAR(100), AGE INT, GRADE INT);
+    INSERT INTO STUDENTS VALUES (1, ''김철수'', 20, 1), (2, ''이영희'', 21, 2), (3, ''박민수'', 20, 1);',
+    1000, 256, 1, '["SELECT", "기초"]', 1
+),
+('SQL 2. 2학년 학생의 이름과 나이', 'STUDENTS에서 GRADE가 2인 학생들의 NAME과 AGE를 조회하세요.', 'SILVER', 'CUSTOM', 'SQL',
+    'CREATE TABLE STUDENTS (STUDENT_ID INT PRIMARY KEY, NAME VARCHAR(100), AGE INT, GRADE INT);
+    INSERT INTO STUDENTS VALUES (1, ''김철수'', 20, 1), (2, ''이영희'', 21, 2), (3, ''박민수'', 20, 1), (4, ''최지수'', 22, 2);',
+    1000, 256, 1, '["WHERE", "SELECT"]', 1
+),
+('SQL 3. 부서별 평균 급여 계산', 'DEPT_ID별 평균 급여(SALARY)를 정수로 계산하세요. 컬럼명은 DEPT_ID, AVG_SALARY.', 'GOLD', 'AI_GENERATED', 'SQL',
+    'CREATE TABLE EMPLOYEES (EMP_ID INT PRIMARY KEY, NAME VARCHAR(100), DEPT_ID INT, SALARY INT);
+    INSERT INTO EMPLOYEES VALUES (101, ''A'', 10, 50000), (102, ''B'', 20, 60000), (103, ''C'', 10, 55000), (104, ''D'', 20, 62000), (105, ''E'', 30, 70000);',
+    1000, 256, 1, '["GROUP BY", "AVG", "ROUND"]', 1
+),
+('SQL 4. 상품 판매 기록 테이블 조인', 'PRODUCTS와 SALES를 조인하여 상품명(PRODUCT_NAME)과 판매 수량(QUANTITY)을 조회하세요.', 'SILVER', 'CUSTOM', 'SQL',
+    'CREATE TABLE PRODUCTS (PRODUCT_ID INT PRIMARY KEY, PRODUCT_NAME VARCHAR(100));
+    CREATE TABLE SALES (SALE_ID INT PRIMARY KEY, PRODUCT_ID INT, QUANTITY INT);
+    INSERT INTO PRODUCTS VALUES (1, ''노트북''), (2, ''마우스''), (3, ''키보드'');
+    INSERT INTO SALES VALUES (1001, 1, 5), (1002, 2, 10), (1003, 1, 3);',
+    1000, 256, 1, '["JOIN", "INNER JOIN"]', 1
+),
+('SQL 5. 급여가 가장 높은 직원', '가장 높은 급여를 받는 직원의 NAME을 조회하세요.', 'GOLD', 'AI_GENERATED', 'SQL',
+    'CREATE TABLE EMPLOYEES (EMP_ID INT PRIMARY KEY, NAME VARCHAR(100), SALARY INT);
+    INSERT INTO EMPLOYEES VALUES (1, ''Alpha'', 70000), (2, ''Beta'', 85000), (3, ''Gamma'', 70000), (4, ''Delta'', 60000);',
+    1000, 256, 1, '["ORDER BY", "LIMIT", "MAX"]', 1
+);
+
+-- =============================================
+/* 2. ALGO_TESTCASES 더미 데이터 삽입  */
+INSERT INTO ALGO_TESTCASES (ALGO_PROBLEM_ID, INPUT_DATA, EXPECTED_OUTPUT, IS_SAMPLE) VALUES
+(1, '1 2', '3', 1),
+(1, '10 20', '30', 0),
+(2, '5\n10 5 3 20 8', '20', 1),
+(2, '3\n-1 -5 -10', '-1', 0),
+(3, '10', '55', 1),
+(3, '40', '102334155', 0),
+(4, '4 5\n10111\n10101\n10101\n11101', '9', 1),
+(4, '1 1', '1', 0),
+(5, '6\n10 20 10 30 20 50', '4', 1),
+(5, '1\n100', '1', 0),
+(6, 'SELECT * FROM STUDENTS;', '[{"STUDENT_ID": 1, "NAME": "김철수", "AGE": 20, "GRADE": 1}, {"STUDENT_ID": 2, "NAME": "이영희", "AGE": 21, "GRADE": 2}, {"STUDENT_ID": 3, "NAME": "박민수", "AGE": 20, "GRADE": 1}]', 1),
+(7, 'SELECT NAME, AGE FROM STUDENTS WHERE GRADE = 2;', '[{"NAME": "이영희", "AGE": 21}, {"NAME": "최지수", "AGE": 22}]', 1),
+(8, 'SELECT DEPT_ID, ROUND(AVG(SALARY)) AS AVG_SALARY FROM EMPLOYEES GROUP BY DEPT_ID ORDER BY DEPT_ID;', '[{"DEPT_ID": 10, "AVG_SALARY": 53000}, {"DEPT_ID": 20, "AVG_SALARY": 61000}, {"DEPT_ID": 30, "AVG_SALARY": 70000}]', 1),
+(9, 'SELECT T1.PRODUCT_NAME, T2.QUANTITY FROM PRODUCTS T1 JOIN SALES T2 ON T1.PRODUCT_ID = T2.PRODUCT_ID ORDER BY T1.PRODUCT_ID;', '[{"PRODUCT_NAME": "노트북", "QUANTITY": 5}, {"PRODUCT_NAME": "마우스", "QUANTITY": 10}, {"PRODUCT_NAME": "노트북", "QUANTITY": 3}]', 1),
+(10, 'SELECT NAME FROM EMPLOYEES ORDER BY SALARY DESC LIMIT 1;', '[{"NAME": "Beta"}]', 1);
 -- =============================================
 -- 유용한 뷰 생성
 -- =============================================
 -- 사용자별 종합 통계 뷰
 -- 변경: FOCUS_SCORE 제거 (모니터링이 점수에 미반영)
 -- 추가: solve_mode별 통계
-CREATE VIEW `V_USER_STATS` AS s.USER_ID,
+CREATE VIEW `V_USER_STATS` AS
+SELECT s.USER_ID,
 COUNT(s.ALGOSUBMISSION_ID) AS total_submissions,
 COUNT(
     CASE
@@ -480,95 +392,98 @@ ORDER BY CASE
         WHEN 'GOLD' THEN 3
         WHEN 'PLATINUM' THEN 4
     END;
--- 방성일
-CREATE TABLE `USER_CODE_PATTERNS` (
-    `PATTERN_ID` VARCHAR(255) NOT NULL COMMENT 'UUID',
-    `USER_ID` BIGINT NOT NULL,
-    `PATTERN_TYPE` VARCHAR(100) NULL COMMENT 'Long Method, Magic Number 등',
-    `FREQUENCY` INT DEFAULT 0 NULL,
-    `LAST_DETECTED` DATETIME NULL,
-    `IMPROVEMENT_STATUS` VARCHAR(100) NULL COMMENT 'Detected, In Progress, Resolved',
-    `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
-    `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
-    PRIMARY KEY (`PATTERN_ID`),
-    FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE,
-    INDEX `idx_user_pattern` (`USER_ID`, `PATTERN_TYPE`)
-) COMMENT = '사용자 코딩 습관 및 패턴';
--- 분석용 원본 파일 저장 (GitHub 파일 등)
-CREATE TABLE `GITHUB_FILES` (
-    `FILE_ID` VARCHAR(255) NOT NULL,
-    `USER_ID` BIGINT NOT NULL,
-    `REPOSITORY_URL` VARCHAR(1000) NULL,
-    `OWNER` VARCHAR(255) NULL,
-    `REPO` VARCHAR(255) NULL,
-    `FILE_PATH` VARCHAR(1000) NULL,
-    `FILE_NAME` VARCHAR(500) NULL,
-    `FILE_CONTENT` LONGTEXT NULL,
-    `FILE_SIZE` INT NULL,
-    `ENCODING` VARCHAR(50) NULL,
-    `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
-    `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
-    PRIMARY KEY (`FILE_ID`),
-    FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
-);
--- 코드 분석 이력 (상세 리포트)
-CREATE TABLE `CODE_ANALYSIS_HISTORY` (
-    `ANALYSIS_ID` VARCHAR(255) NOT NULL COMMENT 'UUID',
-    `USER_ID` BIGINT NOT NULL,
-    `REPOSITORY_URL` VARCHAR(1000) NULL,
-    `FILE_PATH` VARCHAR(1000) NULL,
-    `ANALYSIS_TYPE` VARCHAR(100) NULL,
-    `TONE_LEVEL` INT NULL,
-    `CUSTOM_REQUIREMENTS` TEXT NULL,
-    `ANALYSIS_RESULT` LONGTEXT NULL COMMENT 'JSON 문자열',
-    `AI_SCORE` INT NULL,
-    `CODE_SMELLS` LONGTEXT NULL COMMENT 'JSON 문자열',
-    `SUGGESTIONS` LONGTEXT NULL COMMENT 'JSON 문자열',
-    `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
-    PRIMARY KEY (`ANALYSIS_ID`),
-    FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
-);
--- 분석 결과와 패턴 매핑
-CREATE TABLE `ANALYSIS_PATTERN_MAPPING` (
-    `MAPPING_ID` VARCHAR(255) NOT NULL,
-    `ANALYSIS_ID` VARCHAR(255) NOT NULL,
-    `PATTERN_ID` VARCHAR(255) NOT NULL,
-    `SEVERITY` VARCHAR(50) NULL,
-    `LINE_NUMBER` INT NULL,
-    `CODE_SNIPPET` TEXT NULL,
-    `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
-    PRIMARY KEY (`MAPPING_ID`),
-    FOREIGN KEY (`ANALYSIS_ID`) REFERENCES `CODE_ANALYSIS_HISTORY`(`ANALYSIS_ID`) ON DELETE CASCADE,
-    FOREIGN KEY (`PATTERN_ID`) REFERENCES `USER_CODE_PATTERNS`(`PATTERN_ID`) ON DELETE CASCADE
-);
--- 게시판 공유용 결과 테이블 (CODERESULT)
-CREATE TABLE `CODERESULT` (
-    `CODE_RESULT_ID` BIGINT NOT NULL AUTO_INCREMENT,
-    `USER_ID` BIGINT NOT NULL,
-    `CODE_RESULT_TITLE` VARCHAR(500) NULL,
-    `CODE_FILE_URL` VARCHAR(1000) NULL,
-    `ANALYSIS_DETAIL` LONGTEXT NULL,
-    `SCORE` DECIMAL(5, 2) NULL,
-    `REPOSITORY_URL` VARCHAR(1000) NULL,
-    `FILE_PATH` VARCHAR(1000) NULL,
-    `ANALYSIS_TYPE` VARCHAR(100) NULL,
-    `TONE_LEVEL` INT NULL,
-    `AI_SCORE` INT NULL,
-    `CODE_SMELLS` LONGTEXT NULL,
-    `SUGGESTIONS` LONGTEXT NULL,
-    `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
-    `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
-    PRIMARY KEY (`CODE_RESULT_ID`),
-    FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
-);
+
 -- =============================================
--- 성능 최적화 설정
+-- 코드분석 - 성일 
 -- =============================================
-SET GLOBAL innodb_buffer_pool_size = 1073741824;
-SET GLOBAL slow_query_log = 'ON';
-SET GLOBAL long_query_time = 2;
-SET @@auto_increment_increment = 1;
-SET @@auto_increment_offset = 1;
-SET FOREIGN_KEY_CHECKS = 1;
-COMMIT;
-SHOW TABLES;
+-- CREATE TABLE `USER_CODE_PATTERNS` (
+--     `PATTERN_ID` VARCHAR(255) NOT NULL COMMENT 'UUID',
+--     `USER_ID` BIGINT NOT NULL,
+--     `PATTERN_TYPE` VARCHAR(100) NULL COMMENT 'Long Method, Magic Number 등',
+--     `FREQUENCY` INT DEFAULT 0 NULL,
+--     `LAST_DETECTED` DATETIME NULL,
+--     `IMPROVEMENT_STATUS` VARCHAR(100) NULL COMMENT 'Detected, In Progress, Resolved',
+--     `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
+--     `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
+--     PRIMARY KEY (`PATTERN_ID`),
+--     FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE,
+--     INDEX `idx_user_pattern` (`USER_ID`, `PATTERN_TYPE`)
+-- ) COMMENT = '사용자 코딩 습관 및 패턴';
+-- -- 분석용 원본 파일 저장 (GitHub 파일 등)
+-- CREATE TABLE `GITHUB_FILES` (
+--     `FILE_ID` VARCHAR(255) NOT NULL,
+--     `USER_ID` BIGINT NOT NULL,
+--     `REPOSITORY_URL` VARCHAR(1000) NULL,
+--     `OWNER` VARCHAR(255) NULL,
+--     `REPO` VARCHAR(255) NULL,
+--     `FILE_PATH` VARCHAR(1000) NULL,
+--     `FILE_NAME` VARCHAR(500) NULL,
+--     `FILE_CONTENT` LONGTEXT NULL,
+--     `FILE_SIZE` INT NULL,
+--     `ENCODING` VARCHAR(50) NULL,
+--     `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
+--     `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
+--     PRIMARY KEY (`FILE_ID`),
+--     FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
+-- );
+-- -- 코드 분석 이력 (상세 리포트)
+-- CREATE TABLE `CODE_ANALYSIS_HISTORY` (
+--     `ANALYSIS_ID` VARCHAR(255) NOT NULL COMMENT 'UUID',
+--     `USER_ID` BIGINT NOT NULL,
+--     `REPOSITORY_URL` VARCHAR(1000) NULL,
+--     `FILE_PATH` VARCHAR(1000) NULL,
+--     `ANALYSIS_TYPE` VARCHAR(100) NULL,
+--     `TONE_LEVEL` INT NULL,
+--     `CUSTOM_REQUIREMENTS` TEXT NULL,
+--     `ANALYSIS_RESULT` LONGTEXT NULL COMMENT 'JSON 문자열',
+--     `AI_SCORE` INT NULL,
+--     `CODE_SMELLS` LONGTEXT NULL COMMENT 'JSON 문자열',
+--     `SUGGESTIONS` LONGTEXT NULL COMMENT 'JSON 문자열',
+--     `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
+--     PRIMARY KEY (`ANALYSIS_ID`),
+--     FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
+-- );
+-- -- 분석 결과와 패턴 매핑
+-- CREATE TABLE `ANALYSIS_PATTERN_MAPPING` (
+--     `MAPPING_ID` VARCHAR(255) NOT NULL,
+--     `ANALYSIS_ID` VARCHAR(255) NOT NULL,
+--     `PATTERN_ID` VARCHAR(255) NOT NULL,
+--     `SEVERITY` VARCHAR(50) NULL,
+--     `LINE_NUMBER` INT NULL,
+--     `CODE_SNIPPET` TEXT NULL,
+--     `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
+--     PRIMARY KEY (`MAPPING_ID`),
+--     FOREIGN KEY (`ANALYSIS_ID`) REFERENCES `CODE_ANALYSIS_HISTORY`(`ANALYSIS_ID`) ON DELETE CASCADE,
+--     FOREIGN KEY (`PATTERN_ID`) REFERENCES `USER_CODE_PATTERNS`(`PATTERN_ID`) ON DELETE CASCADE
+-- );
+-- -- 게시판 공유용 결과 테이블 (CODERESULT)
+-- CREATE TABLE `CODERESULT` (
+--     `CODE_RESULT_ID` BIGINT NOT NULL AUTO_INCREMENT,
+--     `USER_ID` BIGINT NOT NULL,
+--     `CODE_RESULT_TITLE` VARCHAR(500) NULL,
+--     `CODE_FILE_URL` VARCHAR(1000) NULL,
+--     `ANALYSIS_DETAIL` LONGTEXT NULL,
+--     `SCORE` DECIMAL(5, 2) NULL,
+--     `REPOSITORY_URL` VARCHAR(1000) NULL,
+--     `FILE_PATH` VARCHAR(1000) NULL,
+--     `ANALYSIS_TYPE` VARCHAR(100) NULL,
+--     `TONE_LEVEL` INT NULL,
+--     `AI_SCORE` INT NULL,
+--     `CODE_SMELLS` LONGTEXT NULL,
+--     `SUGGESTIONS` LONGTEXT NULL,
+--     `CREATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP NULL,
+--     `UPDATED_AT` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NULL,
+--     PRIMARY KEY (`CODE_RESULT_ID`),
+--     FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE
+-- );
+-- -- =============================================
+-- -- 성능 최적화 설정
+-- -- =============================================
+-- SET GLOBAL innodb_buffer_pool_size = 1073741824;
+-- SET GLOBAL slow_query_log = 'ON';
+-- SET GLOBAL long_query_time = 2;
+-- SET @@auto_increment_increment = 1;
+-- SET @@auto_increment_offset = 1;
+-- SET FOREIGN_KEY_CHECKS = 1;
+-- COMMIT;
+-- SHOW TABLES;
