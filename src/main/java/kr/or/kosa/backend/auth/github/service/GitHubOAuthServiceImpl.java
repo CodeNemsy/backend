@@ -30,8 +30,6 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
     @Value("${github.client-secret}")
     private String clientSecret;
 
-    @Value("${github.redirect-uri}")
-    private String redirectUri;
     /**
      * 🔥 code로 Access Token + 프로필 정보 조회
      */
@@ -56,7 +54,6 @@ public class GitHubOAuthServiceImpl implements GitHubOAuthService {
         body.add("client_id", clientId);
         body.add("client_secret", clientSecret);
         body.add("code", code);
-        body.add("redirect_uri", redirectUri);
 
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
 

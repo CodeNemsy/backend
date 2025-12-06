@@ -16,7 +16,8 @@ public enum UserErrorCode implements ErrorCode {
     INVALID_TOKEN("USER014", "유효하지 않은 토큰입니다."),
     ALREADY_SCHEDULED_DELETE("USER100", "이미 탈퇴 예약 중인 계정입니다."),
     FILE_UPLOAD_FAILED("USER013", "파일 업로드에 실패했습니다."),
-    UNSUPPORTED_OAUTH_PROVIDER("USER200", "지원되지 않는 OAuth 제공자입니다.");
+    UNSUPPORTED_OAUTH_PROVIDER("USER200", "지원되지 않는 OAuth 제공자입니다."),
+    SOCIAL_ALREADY_LINKED("USER201", "이미 다른 사용자와 연동된 GitHub 계정입니다.");
 
     private final String code;
     private final String message;

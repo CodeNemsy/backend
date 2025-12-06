@@ -23,8 +23,6 @@ public interface UserService {
 
     boolean resetPassword(String token, String newPassword);
 
-    boolean updatePassword(Long userId, PasswordUpdateRequestDto dto);
-
     UserResponseDto updateUserInfo(Long userId, UserUpdateRequestDto dto, MultipartFile image);
 
     UserResponseDto getUserInfo(Long userId);
@@ -33,11 +31,13 @@ public interface UserService {
 
     boolean restoreUser(Long userId);
 
-    Users githubLogin(GitHubUserResponse gitHubUser);
+    Users githubLogin(GitHubUserResponse gitHubUser, boolean linkMode);
 
     boolean disconnectGithub(Long userId);
 
     boolean isGithubLinked(Long userId);
 
     Map<String, Object> getGithubUserInfo(Long userId);
+
+    void linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser);
 }

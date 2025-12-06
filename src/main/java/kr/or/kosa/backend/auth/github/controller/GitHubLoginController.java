@@ -1,5 +1,6 @@
 package kr.or.kosa.backend.auth.github.controller;
 
+import kr.or.kosa.backend.auth.github.dto.GitHubCallbackResponse;
 import kr.or.kosa.backend.auth.github.dto.GitHubUserResponse;
 import kr.or.kosa.backend.auth.github.service.GitHubOAuthService;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
@@ -43,10 +44,26 @@ public class GitHubLoginController {
      * 🔥 GitHub OAuth Callback
      */
     @GetMapping("/callback")
-    public ResponseEntity<UserLoginResponseDto> callback(@RequestParam("code") String code) {
-
+    public ResponseEntity<GitHubCallbackResponse> callback(
+            @RequestParam("code") String code,
+            @RequestParam(value = "mode", required = false) String mode
+    ) {
         GitHubUserResponse gitHubUser = gitHubOAuthService.getUserInfo(code);
-        Users user = userService.githubLogin(gitHubUser);
+
+        boolean linkMode = "link".equals(mode);  // ← 🔥 이 줄이 반드시 필요
+
+        // 🔥 연동 모드 처리
+        if (linkMode) {
+            return ResponseEntity.ok(
+                    GitHubCallbackResponse.builder()
+                            .linkMode(true)
+                            .gitHubUser(gitHubUser)
+                            .build()
+            );
+        }
+
+        // 🔥 로그인 처리
+        Users user = userService.githubLogin(gitHubUser, linkMode);
 
         String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getUserEmail());
         String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getUserEmail());
@@ -58,11 +75,16 @@ public class GitHubLoginController {
                 TimeUnit.DAYS
         );
 
+        UserLoginResponseDto loginDto = UserLoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(user.toDto())
+                .build();
+
         return ResponseEntity.ok(
-                UserLoginResponseDto.builder()
-                        .accessToken(accessToken)
-                        .refreshToken(refreshToken)
-                        .user(user.toDto())
+                GitHubCallbackResponse.builder()
+                        .linkMode(false)
+                        .loginResponse(loginDto)
                         .build()
         );
     }

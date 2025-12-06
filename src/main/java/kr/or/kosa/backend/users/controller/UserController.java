@@ -1,6 +1,7 @@
 package kr.or.kosa.backend.users.controller;
 
 import jakarta.validation.Valid;
+import kr.or.kosa.backend.auth.github.dto.GitHubUserResponse;
 import kr.or.kosa.backend.security.jwt.JwtUserDetails;
 import kr.or.kosa.backend.users.dto.*;
 import kr.or.kosa.backend.users.service.UserService;
@@ -123,24 +124,6 @@ public class UserController {
     }
 
     /**
-     * 로그인 상태에서 비밀번호 변경
-     */
-    @PutMapping("/password/update")
-    public ResponseEntity<Map<String, Object>> updatePassword(
-            @AuthenticationPrincipal JwtUserDetails user,
-            @RequestBody PasswordUpdateRequestDto dto
-    ) {
-
-        boolean result = userService.updatePassword(user.id(), dto);
-
-        return ResponseEntity.ok(Map.of(
-                KEY_SUCCESS, result,
-                KEY_MESSAGE, result ? "비밀번호가 성공적으로 변경되었습니다."
-                        : "현재 비밀번호가 일치하지 않습니다."
-        ));
-    }
-
-    /**
      * 내 정보 조회
      */
     @GetMapping("/me")
@@ -206,5 +189,21 @@ public class UserController {
                         ? "계정 복구가 완료되었습니다."
                         : "복구할 수 없는 계정이거나 이미 삭제 처리되었습니다."
         ));
+    }
+
+    /** GitHub 계정을 현재 사용자 계정에 연동 */
+    @PostMapping("/github/link")
+    public ResponseEntity<Map<String, Object>> linkGithub(
+            @AuthenticationPrincipal JwtUserDetails user,
+            @RequestBody GitHubUserResponse gitHubUser
+    ) {
+        userService.linkGithubAccount(user.id(), gitHubUser);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        KEY_SUCCESS, true,
+                        KEY_MESSAGE, "GitHub 계정이 연동되었습니다."
+                )
+        );
     }
 }

@@ -248,26 +248,6 @@ public class UserServiceImpl implements UserService {
     }
 
     // ---------------------------------------------------------
-    // 로그인 상태에서 비밀번호 변경
-    // ---------------------------------------------------------
-    @Override
-    public boolean updatePassword(Long userId, PasswordUpdateRequestDto dto) {
-
-        Users users = userMapper.findById(userId);
-        if (users == null) {
-            throw new CustomBusinessException(UserErrorCode.USER_NOT_FOUND);
-        }
-
-        // 🔥 수정된 부분 — DTO 필드명에 맞게 변경
-        if (!passwordEncoder.matches(dto.getCurrentUserPw(), users.getUserPw())) {
-            return false;
-        }
-
-        int result = userMapper.updatePassword(userId, passwordEncoder.encode(dto.getNewUserPw()));
-        return result > 0;
-    }
-
-    // ---------------------------------------------------------
     // 사용자 정보 수정
     // ---------------------------------------------------------
     @Override
@@ -403,54 +383,23 @@ public class UserServiceImpl implements UserService {
         return result > 0;
     }
 
-    // ---------------------------------------------------------
-    // GitHub 로그인 (회원 생성만 담당)
-    // JWT 발급은 Controller에서 처리하는 것이 정석
-    // ---------------------------------------------------------
-    // ---------------------------------------------------------
-    // GitHub 로그인 (회원 생성만 담당)
-    // JWT 발급은 Controller에서 처리하는 것이 정석
-    // ---------------------------------------------------------
     @Override
-    public Users githubLogin(GitHubUserResponse gitHubUser) {
+    public Users githubLogin(GitHubUserResponse gitHubUser, boolean linkMode) {
 
-        String provider = PROVIDER_GITHUB;
         String providerId = String.valueOf(gitHubUser.getId());
-        String email = gitHubUser.getEmail(); // null 가능
 
-        // 1) 이미 SOCIALLOGIN에 연동된 경우 → 바로 로그인
-        Users linkedUser = userMapper.findBySocialProvider(provider, providerId);
+        // 🔥 연동 모드일 경우 → 유저 생성 절대 안 됨
+        if (linkMode) {
+            return null;  // 컨트롤러에서 linkGithubAccount()로 처리
+        }
+
+        // 기존에 연동된 유저 있으면 로그인으로 처리
+        Users linkedUser = userMapper.findBySocialProvider(PROVIDER_GITHUB, providerId);
         if (linkedUser != null) {
             return linkedUser;
         }
 
-        // 2) 이메일 기반 기존 유저 확인
-        if (email != null) {
-            Users existingUser = userMapper.findByEmail(email);
-
-            if (existingUser != null) {
-
-                String existingProvider =
-                        userMapper.findSocialProviderByUserId(existingUser.getUserId());
-
-                // provider가 다르면 → 기존 계정과 merge 금지 → 새로운 계정 생성
-                if (existingProvider != null && !existingProvider.equals(provider)) {
-                    return createNewGithubUser(gitHubUser);
-                }
-
-                // provider 같으면 → SOCIALLOGIN 연동
-                userMapper.insertSocialAccount(
-                        existingUser.getUserId(),
-                        provider,
-                        providerId,
-                        email
-                );
-
-                return existingUser;
-            }
-        }
-
-        // 3) 기존 유저도 없음 → 신규 유저 생성 (중복 로직 제거됨)
+        // 신규 GitHub 가입
         return createNewGithubUser(gitHubUser);
     }
 
@@ -496,26 +445,26 @@ public class UserServiceImpl implements UserService {
     // ---------------------------------------------------------
     private Users createNewGithubUser(GitHubUserResponse gitHubUser) {
 
-        String providerId = String.valueOf(gitHubUser.getId());
-        String email = gitHubUser.getEmail(); // null일 수 있음
+        Long githubId = gitHubUser.getId();
+        String providerId = String.valueOf(githubId);
+        String email = gitHubUser.getEmail();
 
-        // 랜덤 비밀번호 생성
         String randomPassword = UUID.randomUUID().toString();
 
-        // 신규 Users 생성
         Users newUser = new Users();
+
         newUser.setUserEmail(email != null ? email : "github-" + providerId + "@noemail.com");
         newUser.setUserName(gitHubUser.getName());
         newUser.setUserNickname(gitHubUser.getLogin());
-        newUser.setUserImage(gitHubUser.getAvatar_url());
+        newUser.setUserImage(gitHubUser.getAvatarUrl());
+
         newUser.setUserPw(passwordEncoder.encode(randomPassword));
         newUser.setUserRole("ROLE_USER");
         newUser.setUserEnabled(true);
 
-        // DB에 INSERT
         userMapper.insertUser(newUser);
 
-        // SOCIAL_LOGIN에도 INSERT
+        // SOCIAL_LOGIN 테이블 insert
         userMapper.insertSocialAccount(
                 newUser.getUserId(),
                 PROVIDER_GITHUB,
@@ -524,5 +473,54 @@ public class UserServiceImpl implements UserService {
         );
 
         return newUser;
+    }
+
+    @Override
+    public void linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser) {
+
+        // 🔥 GitHub Response 전체 로그
+        log.info("[GitHub 연동] gitHubUser 전체: {}", gitHubUser);
+
+        String providerId = String.valueOf(gitHubUser.getId());
+        log.info("[GitHub 연동] providerId = {}", providerId);
+
+        // 1) GitHub 계정이 이미 다른 유저와 연결되어 있는지 확인
+        Users existingLinkedUser = userMapper.findBySocialProvider(PROVIDER_GITHUB, providerId);
+        log.info("[GitHub 연동] 기존 연결된 유저 = {}",
+                existingLinkedUser != null ? existingLinkedUser.getUserId() : "없음");
+
+        if (existingLinkedUser != null) {
+
+            if (!existingLinkedUser.getUserId().equals(currentUserId)) {
+                log.warn("[GitHub 연동] ⚠ 다른 사용자가 이미 이 GitHub 계정을 연동함! userId = {}", existingLinkedUser.getUserId());
+                throw new CustomBusinessException(UserErrorCode.SOCIAL_ALREADY_LINKED);
+            }
+
+            log.info("[GitHub 연동] 이미 본인 계정과 연결되어 있어 연동 처리 생략");
+            return;
+        }
+
+        // 🔥 이메일 null 방어 코드 + 로그
+        String email = gitHubUser.getEmail();
+        log.info("[GitHub 연동] GitHub 이메일 값 = {}", email);
+
+        if (email == null || email.isBlank()) {
+            email = gitHubUser.getLogin() + "@github-user.com";
+            log.info("[GitHub 연동] 이메일이 없어 임시 이메일 생성 = {}", email);
+        }
+
+        // 실제 DB insert 전에 로그 출력
+        log.info("[GitHub 연동] DB 저장 값 → userId={}, provider=github, providerId={}, email={}",
+                currentUserId, providerId, email);
+
+        // 2) 본인 계정에 GitHub 계정 연결
+        userMapper.insertSocialAccount(
+                currentUserId,
+                PROVIDER_GITHUB,
+                providerId,
+                email
+        );
+
+        log.info("[GitHub 연동] 🎉 GitHub 계정 연동 완료! userId={}", currentUserId);
     }
 }
