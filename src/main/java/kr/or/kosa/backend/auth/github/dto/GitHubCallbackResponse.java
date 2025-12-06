@@ -7,7 +7,12 @@ import lombok.Getter;
 @Getter
 @Builder
 public class GitHubCallbackResponse {
-    private boolean linkMode;
-    private GitHubUserResponse gitHubUser;
-    private UserLoginResponseDto loginResponse;
+
+    private boolean linkMode;               // 프론트에서 "연동 화면" 띄울지 여부
+    private boolean needLink;               // 기존 이메일 계정 존재 → 계정 통합 필요
+    private Long userId;                    // 연동할 기존 계정 ID
+    private String message;                 // 모달에 표시할 메시지
+
+    private GitHubUserResponse gitHubUser;  // GitHub 사용자 정보
+    private UserLoginResponseDto loginResponse; // 토큰 + user 정보 (로그인 성공 시)
 }

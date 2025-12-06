@@ -197,12 +197,12 @@ public class UserController {
             @AuthenticationPrincipal JwtUserDetails user,
             @RequestBody GitHubUserResponse gitHubUser
     ) {
-        userService.linkGithubAccount(user.id(), gitHubUser);
+        boolean result = userService.linkGithubAccount(user.id(), gitHubUser);
 
         return ResponseEntity.ok(
                 Map.of(
-                        KEY_SUCCESS, true,
-                        KEY_MESSAGE, "GitHub 계정이 연동되었습니다."
+                        KEY_SUCCESS, result,
+                        KEY_MESSAGE, result ? "GitHub 계정이 연동되었습니다." : "GitHub 연동에 실패했습니다."
                 )
         );
     }

@@ -1,7 +1,6 @@
 package kr.or.kosa.backend.users.service;
 
-import kr.or.kosa.backend.auth.github.dto.GitHubUserResponse;
-import kr.or.kosa.backend.users.domain.Users;
+import kr.or.kosa.backend.auth.github.dto.*;
 import kr.or.kosa.backend.users.dto.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,7 +30,7 @@ public interface UserService {
 
     boolean restoreUser(Long userId);
 
-    Users githubLogin(GitHubUserResponse gitHubUser, boolean linkMode);
+    GithubLoginResult githubLogin(GitHubUserResponse gitHubUser, boolean linkMode);
 
     boolean disconnectGithub(Long userId);
 
@@ -39,5 +38,5 @@ public interface UserService {
 
     Map<String, Object> getGithubUserInfo(Long userId);
 
-    void linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser);
+    boolean linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser);
 }

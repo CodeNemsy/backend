@@ -28,57 +28,58 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
 
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//        http
-//                .cors(Customizer.withDefaults())
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers(
-//                                "/",
-//                                "/auth/github/**",
-//                                "/oauth2/**",
-//                                "/users/register",
-//                                "/users/login",
-//                                "/users/password/reset/request",
-//                                "/users/password/reset/validate",
-//                                "/users/password/reset/confirm",
-//                                "/email/**",
-//                                "/algo/**"
-//                        ).permitAll()
-//                        .anyRequest().authenticated()
-//                )
-//                .addFilterBefore(
-//                        new JwtAuthenticationFilter(jwtProvider),
-//                        UsernamePasswordAuthenticationFilter.class
-//                );
-//
-//        return http.build();
-//    }
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
-                        // .requestMatchers(
-                        // "/**"
-                        // )
-                        // .permitAll()
-                        .anyRequest().permitAll());
-
-        // .addFilterBefore(
-        // new JwtAuthenticationFilter(jwtProvider),
-        // UsernamePasswordAuthenticationFilter.class
-        // );
+                        .requestMatchers(
+                                "/",
+                                "/auth/github/**",
+                                "/oauth2/**",
+                                "/users/register",
+                                "/users/login",
+                                "/users/password/reset/request",
+                                "/users/password/reset/validate",
+                                "/users/password/reset/confirm",
+                                "/users/github/link",
+                                "/email/**",
+                                "/algo/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(
+                        new JwtAuthenticationFilter(jwtProvider),
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//
+//        http
+//                .cors(Customizer.withDefaults())
+//                .csrf(AbstractHttpConfigurer::disable)
+//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+//
+//                .authorizeHttpRequests(auth -> auth
+//                        // .requestMatchers(
+//                        // "/**"
+//                        // )
+//                        // .permitAll()
+//                        .anyRequest().permitAll());
+//
+//        // .addFilterBefore(
+//        // new JwtAuthenticationFilter(jwtProvider),
+//        // UsernamePasswordAuthenticationFilter.class
+//        // );
+//
+//        return http.build();
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

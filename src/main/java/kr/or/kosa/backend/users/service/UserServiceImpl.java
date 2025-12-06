@@ -1,5 +1,6 @@
 package kr.or.kosa.backend.users.service;
 
+import kr.or.kosa.backend.auth.github.dto.GithubLoginResult;
 import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
 import kr.or.kosa.backend.infra.s3.S3Uploader;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
@@ -40,6 +41,29 @@ public class UserServiceImpl implements UserService {
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String BLACKLIST_KEY_PREFIX = "auth:blacklist:";
     private static final String PROVIDER_GITHUB = "github";
+
+    private static final String KEY_ACCESS_TOKEN = "accessToken";
+    private static final String KEY_REFRESH_TOKEN = "refreshToken";
+
+
+    private Map<String, String> issueTokens(Users user) {
+
+        String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getUserEmail());
+        String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getUserEmail());
+
+        // Redis 저장
+        redisTemplate.opsForValue().set(
+                REFRESH_KEY_PREFIX + user.getUserId(),
+                refreshToken,
+                REFRESH_TOKEN_EXPIRE_DAYS,
+                TimeUnit.DAYS
+        );
+
+        return Map.of(
+                KEY_ACCESS_TOKEN, accessToken,
+                KEY_REFRESH_TOKEN, refreshToken
+        );
+    }
 
     // ---------------------------------------------------------
     // 회원가입
@@ -384,23 +408,56 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Users githubLogin(GitHubUserResponse gitHubUser, boolean linkMode) {
+    public GithubLoginResult githubLogin(GitHubUserResponse gitHubUser, boolean linkMode) {
 
         String providerId = String.valueOf(gitHubUser.getId());
+        String email = gitHubUser.getEmail();
 
-        // 🔥 연동 모드일 경우 → 유저 생성 절대 안 됨
+        // 1) link 모드일 경우 계정 생성 X, 토큰 발급 X
         if (linkMode) {
-            return null;  // 컨트롤러에서 linkGithubAccount()로 처리
+            return GithubLoginResult.builder()
+                    .user(null)
+                    .needLink(false)
+                    .accessToken(null)
+                    .refreshToken(null)
+                    .build();
         }
 
-        // 기존에 연동된 유저 있으면 로그인으로 처리
+        // 2) 이미 GitHub provider 연동된 계정 → 바로 로그인
         Users linkedUser = userMapper.findBySocialProvider(PROVIDER_GITHUB, providerId);
         if (linkedUser != null) {
-            return linkedUser;
+
+            Map<String, String> tokens = issueTokens(linkedUser);
+
+            return GithubLoginResult.builder()
+                    .user(linkedUser)
+                    .needLink(false)
+                    .accessToken(tokens.get(KEY_ACCESS_TOKEN))
+                    .refreshToken(tokens.get(KEY_REFRESH_TOKEN))
+                    .build();
         }
 
-        // 신규 GitHub 가입
-        return createNewGithubUser(gitHubUser);
+        // 3) 이메일로 기존 일반 계정이 존재 → 연동 필요
+        Users existingUser = userMapper.findByEmail(email);
+        if (existingUser != null) {
+            return GithubLoginResult.builder()
+                    .user(existingUser)
+                    .needLink(true)
+                    .accessToken(null)
+                    .refreshToken(null)
+                    .build();
+        }
+
+        // 4) 신규 GitHub 계정 생성
+        Users newUser = createNewGithubUser(gitHubUser);
+        Map<String, String> tokens = issueTokens(newUser);
+
+        return GithubLoginResult.builder()
+                .user(newUser)
+                .needLink(false)
+                .accessToken(tokens.get(KEY_ACCESS_TOKEN))
+                .refreshToken(tokens.get(KEY_REFRESH_TOKEN))
+                .build();
     }
 
     // ---------------------------------------------------------
@@ -476,44 +533,30 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser) {
+    public boolean linkGithubAccount(Long currentUserId, GitHubUserResponse gitHubUser) {
 
-        // 🔥 GitHub Response 전체 로그
         log.info("[GitHub 연동] gitHubUser 전체: {}", gitHubUser);
 
         String providerId = String.valueOf(gitHubUser.getId());
-        log.info("[GitHub 연동] providerId = {}", providerId);
 
-        // 1) GitHub 계정이 이미 다른 유저와 연결되어 있는지 확인
+        // 1) 이미 다른 사용자와 연결된 경우
         Users existingLinkedUser = userMapper.findBySocialProvider(PROVIDER_GITHUB, providerId);
-        log.info("[GitHub 연동] 기존 연결된 유저 = {}",
-                existingLinkedUser != null ? existingLinkedUser.getUserId() : "없음");
-
-        if (existingLinkedUser != null) {
-
-            if (!existingLinkedUser.getUserId().equals(currentUserId)) {
-                log.warn("[GitHub 연동] ⚠ 다른 사용자가 이미 이 GitHub 계정을 연동함! userId = {}", existingLinkedUser.getUserId());
-                throw new CustomBusinessException(UserErrorCode.SOCIAL_ALREADY_LINKED);
-            }
-
-            log.info("[GitHub 연동] 이미 본인 계정과 연결되어 있어 연동 처리 생략");
-            return;
+        if (existingLinkedUser != null && !existingLinkedUser.getUserId().equals(currentUserId)) {
+            throw new CustomBusinessException(UserErrorCode.SOCIAL_ALREADY_LINKED);
         }
 
-        // 🔥 이메일 null 방어 코드 + 로그
-        String email = gitHubUser.getEmail();
-        log.info("[GitHub 연동] GitHub 이메일 값 = {}", email);
+        // 2) 이미 본인 계정에 연결된 경우 → true 반환
+        if (existingLinkedUser != null) {
+            return true;
+        }
 
+        // 3) 이메일 체크 + 임시 이메일 생성
+        String email = gitHubUser.getEmail();
         if (email == null || email.isBlank()) {
             email = gitHubUser.getLogin() + "@github-user.com";
-            log.info("[GitHub 연동] 이메일이 없어 임시 이메일 생성 = {}", email);
         }
 
-        // 실제 DB insert 전에 로그 출력
-        log.info("[GitHub 연동] DB 저장 값 → userId={}, provider=github, providerId={}, email={}",
-                currentUserId, providerId, email);
-
-        // 2) 본인 계정에 GitHub 계정 연결
+        // 4) 신규 연동 저장
         userMapper.insertSocialAccount(
                 currentUserId,
                 PROVIDER_GITHUB,
@@ -521,6 +564,6 @@ public class UserServiceImpl implements UserService {
                 email
         );
 
-        log.info("[GitHub 연동] 🎉 GitHub 계정 연동 완료! userId={}", currentUserId);
+        return true;
     }
 }

@@ -2,6 +2,7 @@ package kr.or.kosa.backend.auth.github.controller;
 
 import kr.or.kosa.backend.auth.github.dto.GitHubCallbackResponse;
 import kr.or.kosa.backend.auth.github.dto.GitHubUserResponse;
+import kr.or.kosa.backend.auth.github.dto.GithubLoginResult;
 import kr.or.kosa.backend.auth.github.service.GitHubOAuthService;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
 import kr.or.kosa.backend.users.domain.Users;
@@ -50,9 +51,9 @@ public class GitHubLoginController {
     ) {
         GitHubUserResponse gitHubUser = gitHubOAuthService.getUserInfo(code);
 
-        boolean linkMode = "link".equals(mode);  // ← 🔥 이 줄이 반드시 필요
-        
-        // 🔥 연동 모드 처리
+        boolean linkMode = "link".equals(mode);  // 링크 모드 여부
+
+        // 🔥 1) 프론트가 연동 모드 요청했을 때 → GitHub 정보만 반환
         if (linkMode) {
             return ResponseEntity.ok(
                     GitHubCallbackResponse.builder()
@@ -62,9 +63,25 @@ public class GitHubLoginController {
             );
         }
 
-        // 🔥 로그인 처리
-        Users user = userService.githubLogin(gitHubUser, linkMode);
+        // 🔥 2) 일반 GitHub 로그인 처리
+        GithubLoginResult result = userService.githubLogin(gitHubUser, false);
+        Users user = result.getUser();
 
+        // 🔥 3) 기존 이메일 계정 존재 → 계정 통합 필요
+        if (result.isNeedLink()) {
+
+            return ResponseEntity.ok(
+                    GitHubCallbackResponse.builder()
+                            .linkMode(false)
+                            .needLink(true)
+                            .userId(user.getUserId())
+                            .message("기존 일반 계정이 존재합니다. GitHub 계정을 연동하시겠습니까?")
+                            .gitHubUser(gitHubUser)
+                            .build()
+            );
+        }
+
+        // 🔥 4) 평소처럼 GitHub 로그인 처리
         String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getUserEmail());
         String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getUserEmail());
 
@@ -84,6 +101,7 @@ public class GitHubLoginController {
         return ResponseEntity.ok(
                 GitHubCallbackResponse.builder()
                         .linkMode(false)
+                        .needLink(false)
                         .loginResponse(loginDto)
                         .build()
         );
