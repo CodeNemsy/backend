@@ -62,7 +62,7 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-qdrant'
 
-    /* AI — Langchain4j */
+    /* LangChain4j */
     implementation 'dev.langchain4j:langchain4j-spring-boot-starter:0.35.0'
     implementation 'dev.langchain4j:langchain4j-open-ai-spring-boot-starter:0.35.0'
 
@@ -70,12 +70,12 @@ dependencies {
     antlr "org.antlr:antlr4:4.13.1"
     implementation 'org.antlr:antlr4-runtime:4.13.1'
 
-    /* Mustache */
-    implementation 'org.springframework.boot:spring-boot-starter-mustache'
-
     /* Spring Integration */
     implementation 'org.springframework.boot:spring-boot-starter-integration'
 
+    /* Mustache */
+    implementation 'org.springframework.boot:spring-boot-starter-mustache'
+    
     /* DB */
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'com.mysql:mysql-connector-j:9.3.0'
