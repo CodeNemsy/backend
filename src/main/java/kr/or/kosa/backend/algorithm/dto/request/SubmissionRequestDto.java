@@ -1,4 +1,4 @@
-package kr.or.kosa.backend.algorithm.dto;
+package kr.or.kosa.backend.algorithm.dto.request;
 
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackType;
 import kr.or.kosa.backend.algorithm.dto.enums.SolveMode;

@@ -5,7 +5,7 @@ import kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto;
 import kr.or.kosa.backend.algorithm.dto.AICodeEvaluationResult;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationParams;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationResult;
-import kr.or.kosa.backend.algorithm.dto.SubmissionAiStatusDto;
+import kr.or.kosa.backend.algorithm.dto.response.SubmissionAiStatusResponseDto;
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackStatus;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmSubmissionMapper;
 

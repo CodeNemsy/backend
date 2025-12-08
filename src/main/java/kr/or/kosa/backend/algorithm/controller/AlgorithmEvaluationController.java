@@ -1,6 +1,6 @@
 package kr.or.kosa.backend.algorithm.controller;
 
-import kr.or.kosa.backend.algorithm.dto.SubmissionAiStatusDto;
+import kr.or.kosa.backend.algorithm.dto.response.SubmissionAiStatusResponseDto;
 import kr.or.kosa.backend.algorithm.exception.AlgoErrorCode;
 import kr.or.kosa.backend.algorithm.service.AlgorithmEvaluationService;
 import kr.or.kosa.backend.commons.exception.custom.CustomBusinessException;
