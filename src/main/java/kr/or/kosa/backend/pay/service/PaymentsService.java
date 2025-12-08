@@ -6,6 +6,7 @@ import kr.or.kosa.backend.pay.entity.Subscription;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface PaymentsService {
@@ -30,4 +31,7 @@ public interface PaymentsService {
 
     // 결제/취소 히스토리 조회 (기간/상태 필터)
     List<Payments> getPaymentHistory(Long userId, LocalDate from, LocalDate to, String status);
+
+    // 토스 단건조회 (결제 검증/상태 확인)
+    Map<String, Object> inquirePayment(Long userId, String paymentKey, String orderId);
 }
