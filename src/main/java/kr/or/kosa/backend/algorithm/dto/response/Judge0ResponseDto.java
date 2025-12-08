@@ -1,4 +1,4 @@
-package kr.or.kosa.backend.algorithm.dto;
+package kr.or.kosa.backend.algorithm.dto.response;
 
 import kr.or.kosa.backend.algorithm.dto.enums.JudgeResult;
 import lombok.Getter;

@@ -58,14 +58,35 @@ public class Judge0Config {
                 .build();
 
         // 4. WebClient 생성
-        WebClient webClient = WebClient.builder()
+        // [기존 RapidAPI 방식 - 주석 처리]
+        // WebClient webClient = WebClient.builder()
+        //         .baseUrl(judge0Properties.getBaseUrl())
+        //         .clientConnector(new ReactorClientHttpConnector(httpClient))
+        //         .exchangeStrategies(strategies)
+        //         .defaultHeader("X-RapidAPI-Key", judge0Properties.getRapidapiKey())
+        //         .defaultHeader("X-RapidAPI-Host", judge0Properties.getRapidapiHost())
+        //         .defaultHeader("Content-Type", "application/json")
+        //         .defaultHeader("Accept", "application/json")
+
+        // [신규] 셀프호스팅/RapidAPI 모드 분기 처리
+        WebClient.Builder webClientBuilder = WebClient.builder()
                 .baseUrl(judge0Properties.getBaseUrl())
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .exchangeStrategies(strategies)
-                .defaultHeader("X-RapidAPI-Key", judge0Properties.getRapidapiKey())
-                .defaultHeader("X-RapidAPI-Host", judge0Properties.getRapidapiHost())
                 .defaultHeader("Content-Type", "application/json")
-                .defaultHeader("Accept", "application/json")
+                .defaultHeader("Accept", "application/json");
+
+        // 셀프호스팅이 아닌 경우에만 RapidAPI 헤더 추가
+        if (!judge0Properties.isSelfHosted()) {
+            log.info("RapidAPI 모드로 Judge0 연결 - Host: {}", judge0Properties.getRapidapiHost());
+            webClientBuilder
+                    .defaultHeader("X-RapidAPI-Key", judge0Properties.getRapidapiKey())
+                    .defaultHeader("X-RapidAPI-Host", judge0Properties.getRapidapiHost());
+        } else {
+            log.info("셀프호스팅 모드로 Judge0 연결 - URL: {}", judge0Properties.getBaseUrl());
+        }
+
+        WebClient webClient = webClientBuilder
                 .filter((request, next) -> {
                     if (log.isDebugEnabled()) {
                         log.debug("Judge0 API 요청: {} {}", request.method(), request.url());

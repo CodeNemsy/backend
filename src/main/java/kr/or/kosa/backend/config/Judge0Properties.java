@@ -15,6 +15,7 @@ import java.util.Map;
 public class Judge0Properties {
 
     private String baseUrl;
+    private boolean selfHosted = true;  // 셀프호스팅 모드 (기본값: true)
     private String rapidapiKey;
     private String rapidapiHost;
     private Timeout timeout = new Timeout();

@@ -2,18 +2,23 @@ package kr.or.kosa.backend.algorithm.service;
 
 import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
+import kr.or.kosa.backend.algorithm.dto.ProblemValidationLogDto;
+import kr.or.kosa.backend.algorithm.dto.ValidationResultDto;
 import kr.or.kosa.backend.algorithm.dto.request.ProblemListRequestDto;
 import kr.or.kosa.backend.algorithm.dto.response.ProblemGenerationResponseDto;
 import kr.or.kosa.backend.algorithm.dto.response.ProblemStatisticsResponseDto;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;
+import kr.or.kosa.backend.algorithm.mapper.ProblemValidationLogMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -22,6 +27,7 @@ import java.util.Map;
 public class AlgorithmProblemService {
 
     private final AlgorithmProblemMapper algorithmProblemMapper;
+    private final ProblemValidationLogMapper validationLogMapper;
 
 
     /**
@@ -316,7 +322,12 @@ public class AlgorithmProblemService {
                 saveTestcases(problem.getAlgoProblemId(), responseDto.getTestCases());
             }
 
-            // 4. ResponseDto에 생성된 ID 설정
+            // 4. 검증 로그 저장
+            if (responseDto.getValidationResults() != null && !responseDto.getValidationResults().isEmpty()) {
+                saveValidationLog(problem.getAlgoProblemId(), responseDto);
+            }
+
+            // 5. ResponseDto에 생성된 ID 설정
             responseDto.setProblemId(problem.getAlgoProblemId());
 
             return problem.getAlgoProblemId();
@@ -353,5 +364,119 @@ public class AlgorithmProblemService {
             log.error("전체 테스트케이스 조회 실패 - problemId: {}", problemId, e);
             throw new RuntimeException("전체 테스트케이스 조회 중 오류가 발생했습니다.", e);
         }
+    }
+
+    /**
+     * 검증 로그 저장
+     *
+     * @param problemId   문제 ID
+     * @param responseDto 문제 생성 응답 (검증 결과 포함)
+     */
+    @Transactional
+    private void saveValidationLog(Long problemId, ProblemGenerationResponseDto responseDto) {
+        try {
+            List<ValidationResultDto> validationResults = responseDto.getValidationResults();
+
+            // 검증 결과 분석
+            boolean allPassed = validationResults.stream().allMatch(ValidationResultDto::isPassed);
+            String validationStatus = allPassed ? "PASSED" : "FAILED";
+
+            // 메타데이터에서 유사도 점수 추출
+            Double similarityScore = null;
+            Boolean similarityValid = null;
+            Integer optimalExecutionTime = null;
+            Integer naiveExecutionTime = null;
+            Double timeRatio = null;
+            Boolean timeRatioValid = null;
+            String optimalCodeResult = null;
+            String naiveCodeResult = null;
+
+            for (ValidationResultDto result : validationResults) {
+                Map<String, Object> metadata = result.getMetadata();
+
+                if ("SimilarityChecker".equals(result.getValidatorName())) {
+                    if (metadata.containsKey("maxSimilarity")) {
+                        similarityScore = ((Number) metadata.get("maxSimilarity")).doubleValue();
+                    }
+                    similarityValid = result.isPassed();
+                }
+
+                if ("CodeExecutionValidator".equals(result.getValidatorName())) {
+                    if (metadata.containsKey("optimalExecutionTime")) {
+                        optimalExecutionTime = ((Number) metadata.get("optimalExecutionTime")).intValue();
+                    }
+                    optimalCodeResult = result.isPassed() ? "PASS" : "FAIL";
+                }
+
+                if ("TimeRatioValidator".equals(result.getValidatorName())) {
+                    if (metadata.containsKey("naiveExecutionTime")) {
+                        naiveExecutionTime = ((Number) metadata.get("naiveExecutionTime")).intValue();
+                    }
+                    if (metadata.containsKey("timeRatio")) {
+                        timeRatio = ((Number) metadata.get("timeRatio")).doubleValue();
+                    }
+                    timeRatioValid = result.isPassed();
+                    naiveCodeResult = result.isPassed() ? "PASS" : "FAIL";
+                }
+            }
+
+            // 실패 원인 수집 (JSON 형태)
+            String failureReasons = collectFailureReasons(validationResults);
+
+            // 검증 로그 DTO 생성
+            ProblemValidationLogDto validationLog = ProblemValidationLogDto.builder()
+                    .algoProblemId(problemId)
+                    .optimalCode(responseDto.getOptimalCode())
+                    .naiveCode(responseDto.getNaiveCode())
+                    .expectedTimeComplexity(responseDto.getProblem().getExpectedTimeComplexity())
+                    .optimalCodeResult(optimalCodeResult)
+                    .naiveCodeResult(naiveCodeResult)
+                    .optimalExecutionTime(optimalExecutionTime)
+                    .naiveExecutionTime(naiveExecutionTime)
+                    .timeRatio(timeRatio)
+                    .timeRatioValid(timeRatioValid)
+                    .similarityScore(similarityScore)
+                    .similarityValid(similarityValid)
+                    .validationStatus(validationStatus)
+                    .correctionAttempts(0)  // 저장 시점에서는 수정 시도 전
+                    .failureReasons(failureReasons)
+                    .createdAt(LocalDateTime.now())
+                    .completedAt(LocalDateTime.now())
+                    .build();
+
+            // DB 저장
+            int result = validationLogMapper.insertValidationLog(validationLog);
+
+            if (result > 0) {
+                log.info("검증 로그 저장 완료 - 문제 ID: {}, 검증 상태: {}, 로그 ID: {}",
+                        problemId, validationStatus, validationLog.getValidationId());
+            } else {
+                log.warn("검증 로그 저장 실패 - 문제 ID: {}", problemId);
+            }
+
+        } catch (Exception e) {
+            log.error("검증 로그 저장 중 오류 발생 - problemId: {}", problemId, e);
+            // 검증 로그 저장 실패가 전체 프로세스를 중단하지 않도록 예외를 던지지 않음
+        }
+    }
+
+    /**
+     * 실패 원인 수집 (JSON 형태)
+     */
+    private String collectFailureReasons(List<ValidationResultDto> validationResults) {
+        List<String> failures = validationResults.stream()
+                .filter(r -> !r.isPassed())
+                .map(r -> String.format("{\"validator\":\"%s\",\"errors\":%s}",
+                        r.getValidatorName(),
+                        r.getErrors().stream()
+                                .map(e -> "\"" + e.replace("\"", "\\\"") + "\"")
+                                .collect(Collectors.joining(",", "[", "]"))))
+                .collect(Collectors.toList());
+
+        if (failures.isEmpty()) {
+            return null;
+        }
+
+        return "[" + String.join(",", failures) + "]";
     }
 }

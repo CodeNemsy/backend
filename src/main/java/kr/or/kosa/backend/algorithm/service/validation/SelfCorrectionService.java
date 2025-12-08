@@ -63,8 +63,9 @@ public class SelfCorrectionService {
             // LLM에 수정 요청
             String correctedResponse = llmChatService.generate(correctionPrompt);
 
-            // 응답 파싱 (기존 파서 재사용)
-            ProblemGenerationResponseDto correctedProblem = parseCorrection(correctedResponse, problem);
+            // 응답 파싱 (원본 데이터 유지하면서 파싱)
+            ProblemGenerationResponseDto correctedProblem = parseCorrection(
+                    correctedResponse, problem, testCases, optimalCode, naiveCode);
 
             if (correctedProblem != null) {
                 log.info("Self-Correction #{} 완료 - 수정된 문제 생성됨", attemptNumber);
@@ -122,11 +123,16 @@ public class SelfCorrectionService {
         prompt.append("- 시간 제한: ").append(problem.getTimelimit()).append("ms\n");
         prompt.append("- 메모리 제한: ").append(problem.getMemorylimit()).append("MB\n\n");
 
-        prompt.append("### 테스트케이스 (").append(testCases.size()).append("개)\n");
-        for (int i = 0; i < Math.min(testCases.size(), 3); i++) {
-            AlgoTestcaseDto tc = testCases.get(i);
-            prompt.append("입력: ").append(truncate(tc.getInputData(), 100)).append("\n");
-            prompt.append("출력: ").append(truncate(tc.getExpectedOutput(), 100)).append("\n\n");
+        int testCaseCount = (testCases != null) ? testCases.size() : 0;
+        prompt.append("### 테스트케이스 (").append(testCaseCount).append("개)\n");
+        if (testCases != null && !testCases.isEmpty()) {
+            for (int i = 0; i < Math.min(testCases.size(), 3); i++) {
+                AlgoTestcaseDto tc = testCases.get(i);
+                prompt.append("입력: ").append(truncate(tc.getInputData(), 100)).append("\n");
+                prompt.append("출력: ").append(truncate(tc.getExpectedOutput(), 100)).append("\n\n");
+            }
+        } else {
+            prompt.append("(테스트케이스 없음 - 새로 생성 필요)\n\n");
         }
 
         if (optimalCode != null && !optimalCode.isBlank()) {
@@ -162,17 +168,27 @@ public class SelfCorrectionService {
 
     /**
      * LLM 응답 파싱
+     * 파싱 실패 시 원본 데이터 유지
      */
-    private ProblemGenerationResponseDto parseCorrection(String response, AlgoProblemDto originalProblem) {
-        // 실제 구현에서는 LLMResponseParser를 사용하여 파싱
-        // 여기서는 간단한 구조만 제공
+    private ProblemGenerationResponseDto parseCorrection(
+            String response,
+            AlgoProblemDto originalProblem,
+            List<AlgoTestcaseDto> originalTestCases,
+            String originalOptimalCode,
+            String originalNaiveCode) {
         try {
-            // JSON 파싱 로직 (LLMResponseParser 재사용 권장)
             log.debug("Self-Correction 응답 파싱 중...");
 
-            // 임시: 원본 문제 반환 (실제 구현 필요)
+            // TODO: 실제 구현에서는 LLMResponseParser를 사용하여 응답 파싱
+            // 현재는 원본 데이터를 유지하면서 반환 (LLM 응답에서 수정된 부분만 업데이트)
+
+            // 원본 데이터를 유지하면서 반환
+            // 실제 구현 시 LLM 응답에서 수정된 데이터를 파싱하여 적용
             return ProblemGenerationResponseDto.builder()
                     .problem(originalProblem)
+                    .testCases(originalTestCases != null ? originalTestCases : List.of())
+                    .optimalCode(originalOptimalCode)
+                    .naiveCode(originalNaiveCode)
                     .build();
 
         } catch (Exception e) {

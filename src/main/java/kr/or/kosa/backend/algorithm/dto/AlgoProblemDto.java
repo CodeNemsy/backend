@@ -108,6 +108,11 @@ public class AlgoProblemDto {
      */
     private String outputFormat;
 
+    /**
+     * 예상 시간 복잡도 (예: O(n log n))
+     */
+    private String expectedTimeComplexity;
+
     // === 추가 필드 (연관 데이터) ===
 
     /**

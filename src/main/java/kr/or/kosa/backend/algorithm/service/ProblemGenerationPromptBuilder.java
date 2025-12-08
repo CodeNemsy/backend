@@ -130,23 +130,40 @@ public class ProblemGenerationPromptBuilder {
                   "memoryLimit": 256,
                   "expectedTimeComplexity": "O(n log n)",
                   "testCases": [
-                    {"input": "예제 입력 1", "output": "예제 출력 1", "isSample": true, "description": "기본 케이스"},
-                    {"input": "예제 입력 2", "output": "예제 출력 2", "isSample": true, "description": "다른 케이스"},
-                    {"input": "큰 입력 데이터", "output": "예상 출력", "isSample": false, "description": "경계값 테스트"},
-                    {"input": "특수 케이스", "output": "특수 출력", "isSample": false, "description": "코너 케이스"},
-                    {"input": "최대 입력", "output": "최대 출력", "isSample": false, "description": "최대 크기 테스트"}
+                    {"input": "5\\n1 3 5 7 9", "output": "YES", "isSample": true, "description": "기본 케이스"},
+                    {"input": "3\\n10 20 30", "output": "NO", "isSample": true, "description": "다른 케이스"},
+                    {"input": "10\\n1 2 3 4 5 6 7 8 9 10", "output": "55", "isSample": false, "description": "경계값 테스트"},
+                    {"input": "1\\n1000000000", "output": "1000000000", "isSample": false, "description": "코너 케이스"},
+                    {"input": "100\\n1 2 3 ... 100", "output": "5050", "isSample": false, "description": "큰 입력 테스트"}
                   ],
                   "optimalCode": "Python 최적 풀이 코드 (전체 코드)",
                   "naiveCode": "Python 비효율적 풀이 코드 (시간 초과 발생해야 함)",
-                  "tags": ["알고리즘 태그 1", "알고리즘 태그 2"],
-                  "hint": "힌트 (선택사항, 없으면 null)"
+                  "tags": ["알고리즘 태그 1", "알고리즘 태그 2"]
                 }
                 ```
 
                 **중요:**
                 - JSON만 출력하고 다른 설명은 절대 포함하지 마세요.
                 - optimalCode와 naiveCode는 완전한 Python 코드여야 합니다 (입력 받기부터 출력까지).
+                - 코드는 반드시 실행 가능해야 합니다. 함수를 정의했다면 마지막에 반드시 호출하세요!
+                - 올바른 예시: def solve(): ...코드... \\n\\nsolve()  (마지막에 solve() 호출)
+                - 잘못된 예시: def solve(): ...코드...  (함수 정의만 하고 호출 안함)
                 - testCases의 input/output은 실제 프로그램 입출력 형식과 일치해야 합니다.
+
+                **JSON 형식 필수 규칙:**
+                - 모든 문자열 값은 하나의 연속된 문자열이어야 합니다.
+                - 문자열 연결 연산자(+)를 절대 사용하지 마세요.
+                - 코드의 줄바꿈은 반드시 \\n 이스케이프 시퀀스로 표현하세요.
+                - 예시: "optimalCode": "def solve():\\n    n = int(input())\\n    print(n)"
+                - 잘못된 예시: "optimalCode": "def solve():" + "\\n    n = int(input())"
+
+                **테스트케이스 데이터 규칙:**
+                - input과 output은 반드시 실제 문자열 데이터로 작성하세요.
+                - Python 코드나 표현식 (join, range, for 등)을 절대 사용하지 마세요.
+                - 잘못된 예시: "input": "".join(str(x) for x in range(100))
+                - 올바른 예시: "input": "1 2 3 4 5"
+                - 큰 데이터가 필요한 경우 적당한 크기(10~100개)의 실제 데이터를 작성하세요.
+                - 실제 실행 가능한 구체적인 데이터를 사용하세요.
                 """);
 
         return sb.toString();

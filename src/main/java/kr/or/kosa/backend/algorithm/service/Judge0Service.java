@@ -139,9 +139,9 @@ public class Judge0Service {
             case "Prolog" -> 69; // Prolog (GNU Prolog 1.4.5)
 
             // === Python 계열 ===
-            case "Python 3" -> 113; // Python (3.14.0) - 최신
+            case "Python 3" -> 71; // Python (3.8.1) - 안정 버전
             case "Python 2" -> 70; // Python (2.7.17)
-            case "PyPy3" -> 113; // Python 3 최신으로 대체
+            case "PyPy3" -> 71; // Python 3 안정 버전으로 대체
             case "PyPy2" -> 70; // Python 2로 대체
 
             // === R ===
@@ -228,6 +228,11 @@ public class Judge0Service {
                         maxMemoryUsage = Math.max(maxMemoryUsage, result.getMemoryUsage());
                     }
 
+                    // Rate Limit 방지: 테스트케이스 간 딜레이 (RapidAPI 무료 요금제 제한)
+                    if (i < testCases.size() - 1) {
+                        Thread.sleep(1000); // 1초 대기
+                    }
+
                 } catch (Exception e) {
                     log.error("테스트케이스 {} 실행 중 오류", i + 1, e);
 
@@ -288,7 +293,11 @@ public class Judge0Service {
                 .enable_per_process_and_thread_memory_limit(true)
                 .build();
 
-        log.info("[Judge0 Request Check] {}", request);
+        log.info("[Judge0 Request Check] languageId={}, stdin='{}', expected_output='{}'",
+                request.getLanguage_id(),
+                truncateForLog(request.getStdin()),
+                truncateForLog(request.getExpected_output()));
+        log.debug("[Judge0 Source Code]\n{}", truncateForLog(request.getSource_code(), 500));
 
         try {
             // 2. WebClient로 Judge0에 제출
@@ -432,5 +441,25 @@ public class Judge0Service {
         }
 
         return "WA"; // Wrong Answer
+    }
+
+    /**
+     * 로그용 문자열 잘라내기 (기본 100자)
+     */
+    private String truncateForLog(String text) {
+        return truncateForLog(text, 100);
+    }
+
+    /**
+     * 로그용 문자열 잘라내기
+     */
+    private String truncateForLog(String text, int maxLength) {
+        if (text == null) {
+            return "null";
+        }
+        if (text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength) + "...(총 " + text.length() + "자)";
     }
 }

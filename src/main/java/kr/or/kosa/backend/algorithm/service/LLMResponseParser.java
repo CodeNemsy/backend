@@ -49,8 +49,22 @@ public class LLMResponseParser {
      * @throws JsonParseException JSON 파싱 실패 시
      */
     public ParsedResult parse(String aiResponse, ProblemGenerationRequestDto request) {
+        String cleanedJson = null;
         try {
-            String cleanedJson = sanitizeJson(aiResponse);
+            // 디버그: 원본 응답 로그 (문제 발생 시 확인용)
+            log.debug("LLM 원본 응답 (처음 500자): {}",
+                    aiResponse != null && aiResponse.length() > 500
+                            ? aiResponse.substring(0, 500) + "..."
+                            : aiResponse);
+
+            cleanedJson = sanitizeJson(aiResponse);
+
+            // 디버그: 정제 후 JSON 로그
+            log.debug("정제 후 JSON (처음 500자): {}",
+                    cleanedJson.length() > 500
+                            ? cleanedJson.substring(0, 500) + "..."
+                            : cleanedJson);
+
             JsonNode root = objectMapper.readTree(cleanedJson);
 
             AlgoProblemDto problem = parseProblem(root, request);
@@ -67,6 +81,7 @@ public class LLMResponseParser {
 
         } catch (JsonProcessingException e) {
             log.error("JSON 파싱 실패: {}", e.getMessage());
+            log.error("파싱 실패한 JSON 전체:\n{}", cleanedJson);
             throw new JsonParseException("LLM 응답 파싱 실패: " + e.getMessage(), e);
         }
     }
@@ -74,6 +89,8 @@ public class LLMResponseParser {
     /**
      * JSON 응답 정제
      * - 마크다운 코드 블록 제거
+     * - JavaScript 스타일 문자열 연결 제거 ("str1" + "str2" → "str1str2")
+     * - 문자열 값 내부의 줄바꿈을 \n으로 이스케이프
      * - 유효하지 않은 이스케이프 시퀀스 처리
      */
     public String sanitizeJson(String rawResponse) {
@@ -93,8 +110,144 @@ public class LLMResponseParser {
             return "{}";
         }
 
+        // Python 코드 표현식이 포함된 테스트케이스 제거
+        cleaned = removePythonExpressions(cleaned);
+        log.debug("Python 표현식 제거 후 (처음 300자): {}",
+                cleaned.length() > 300 ? cleaned.substring(0, 300) + "..." : cleaned);
+
+        // JavaScript 스타일 문자열 연결 제거 ("str" + "str" 패턴)
+        cleaned = removeStringConcatenation(cleaned);
+        log.debug("문자열 연결 제거 후 (처음 300자): {}",
+                cleaned.length() > 300 ? cleaned.substring(0, 300) + "..." : cleaned);
+
+        // JSON 문자열 값 내부의 줄바꿈/탭을 이스케이프 처리
+        cleaned = escapeNewlinesInJsonStrings(cleaned);
+        log.debug("줄바꿈 이스케이프 후 (처음 300자): {}",
+                cleaned.length() > 300 ? cleaned.substring(0, 300) + "..." : cleaned);
+
         // 유효하지 않은 JSON 이스케이프 시퀀스 수정
-        return fixInvalidEscapes(cleaned);
+        String result = fixInvalidEscapes(cleaned);
+        log.debug("최종 정제 완료 (처음 300자): {}",
+                result.length() > 300 ? result.substring(0, 300) + "..." : result);
+
+        return result;
+    }
+
+    /**
+     * Python 코드 표현식이 포함된 테스트케이스 항목 제거
+     * LLM이 큰 데이터를 Python 코드로 표현한 경우 해당 테스트케이스 제거
+     * 예: ".join(str(x) for x in range(100))" 같은 패턴
+     */
+    private String removePythonExpressions(String json) {
+        // Python 코드 패턴들: .join(, range(, for x in, str(x)
+        if (!json.contains(".join(") && !json.contains("range(") && !json.contains(" for ")) {
+            return json; // Python 표현식 없음
+        }
+
+        log.warn("Python 코드 표현식 감지됨 - 문제가 있는 테스트케이스 제거 시도");
+
+        // testCases 배열에서 Python 표현식이 포함된 항목 제거
+        // 패턴: {"input": "...", "output": "...", ...} 형태의 객체 중
+        // .join( 또는 range( 또는 for x in 을 포함하는 항목 제거
+
+        // 정규식으로 testCases 배열 내의 문제있는 객체 제거
+        // 각 테스트케이스 객체를 찾아서 Python 표현식이 있으면 제거
+        String result = json;
+
+        // 패턴: {...} 객체 중 .join( 또는 range( 포함하는 것
+        // testCases 배열 내부의 객체만 대상으로 함
+        result = result.replaceAll(
+                "\\{[^{}]*(\\.join\\(|range\\(|\\sfor\\s)[^{}]*\\}\\s*,?",
+                ""
+        );
+
+        // 빈 쉼표 정리 (,, → ,)
+        result = result.replaceAll(",\\s*,", ",");
+        // 배열 시작 후 쉼표 정리 ([, → [)
+        result = result.replaceAll("\\[\\s*,", "[");
+        // 배열 끝 전 쉼표 정리 (,] → ])
+        result = result.replaceAll(",\\s*]", "]");
+
+        return result;
+    }
+
+    /**
+     * JavaScript 스타일 문자열 연결 제거
+     * "string1" + "string2" → "string1string2"
+     * LLM이 멀티라인 코드를 문자열 연결로 표현할 경우 처리
+     */
+    private String removeStringConcatenation(String json) {
+        // 패턴: "..." + "..." 또는 "..." +\n"..."
+        // 반복적으로 제거 (중첩된 연결 처리)
+        String result = json;
+        String previous;
+        int iterations = 0;
+        int maxIterations = 100; // 무한 루프 방지
+
+        do {
+            previous = result;
+            // "..." + "..." 패턴 (공백, 줄바꿈 포함)
+            result = result.replaceAll("\"\\s*\\+\\s*\"", "");
+            iterations++;
+        } while (!result.equals(previous) && iterations < maxIterations);
+
+        if (iterations > 1) {
+            log.debug("문자열 연결 {}회 제거", iterations - 1);
+        }
+
+        return result;
+    }
+
+    /**
+     * JSON 문자열 값 내부의 줄바꿈과 탭을 이스케이프 처리
+     * 따옴표로 둘러싸인 문자열 내부만 처리
+     */
+    private String escapeNewlinesInJsonStrings(String json) {
+        StringBuilder result = new StringBuilder();
+        boolean insideString = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < json.length(); i++) {
+            char c = json.charAt(i);
+
+            if (escaped) {
+                result.append(c);
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                result.append(c);
+                escaped = true;
+                continue;
+            }
+
+            if (c == '"') {
+                insideString = !insideString;
+                result.append(c);
+                continue;
+            }
+
+            // 문자열 내부에서 실제 줄바꿈/탭을 이스케이프
+            if (insideString) {
+                if (c == '\n') {
+                    result.append("\\n");
+                    continue;
+                }
+                if (c == '\r') {
+                    result.append("\\r");
+                    continue;
+                }
+                if (c == '\t') {
+                    result.append("\\t");
+                    continue;
+                }
+            }
+
+            result.append(c);
+        }
+
+        return result.toString();
     }
 
     /**
@@ -168,6 +321,7 @@ public class LLMResponseParser {
         String outputFormat = getText(root, "outputFormat");
         String sampleInput = getText(root, "sampleInput");
         String sampleOutput = getText(root, "sampleOutput");
+        String expectedTimeComplexity = getText(root, "expectedTimeComplexity");
 
         // 전체 설명 구성
         String fullDescription = buildFullDescription(
@@ -183,6 +337,7 @@ public class LLMResponseParser {
                 .constraints(constraints)
                 .inputFormat(inputFormat)
                 .outputFormat(outputFormat)
+                .expectedTimeComplexity(expectedTimeComplexity)
                 .timelimit(request.getTimeLimit() != null
                         ? request.getTimeLimit()
                         : getDefaultTimeLimit(request.getDifficulty()))
