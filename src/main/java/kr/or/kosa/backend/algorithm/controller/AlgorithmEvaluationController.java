@@ -60,7 +60,7 @@ public class AlgorithmEvaluationController {
      * GET /api/algo/evaluation/status/{submissionId}
      */
     @GetMapping("/status/{submissionId}")
-    public ResponseEntity<ApiResponse<SubmissionAiStatusDto>> getEvaluationStatus(
+    public ResponseEntity<ApiResponse<SubmissionAiStatusResponseDto>> getEvaluationStatus(
             @PathVariable Long submissionId,
             @AuthenticationPrincipal JwtAuthentication authentication
     ) {
@@ -69,7 +69,7 @@ public class AlgorithmEvaluationController {
         log.info("평가 상태 조회 요청 - submissionId: {}, userId: {}", submissionId, userId);
 
         try {
-            SubmissionAiStatusDto status = evaluationService.getEvaluationStatus(submissionId);
+            SubmissionAiStatusResponseDto status = evaluationService.getEvaluationStatus(submissionId);
 
             return ResponseEntity.ok(ApiResponse.success(status));
 

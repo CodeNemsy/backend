@@ -1,7 +1,10 @@
 package kr.or.kosa.backend.algorithm.controller;
 
 import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
-import kr.or.kosa.backend.algorithm.dto.*;
+import kr.or.kosa.backend.algorithm.dto.request.ProblemGenerationRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.ProblemListRequestDto;
+import kr.or.kosa.backend.algorithm.dto.response.ProblemGenerationResponseDto;
+import kr.or.kosa.backend.algorithm.dto.response.ProblemStatisticsResponseDto;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemDifficulty;
 import kr.or.kosa.backend.algorithm.exception.AlgoErrorCode;
 import kr.or.kosa.backend.algorithm.service.AIProblemGeneratorService;
@@ -287,7 +290,7 @@ public class AlgorithmProblemController {
      * GET /api/algo/problems/statistics
      */
     @GetMapping("/statistics")
-    public ResponseEntity<ApiResponse<ProblemStatisticsDto>> getStatistics(
+    public ResponseEntity<ApiResponse<ProblemStatisticsResponseDto>> getStatistics(
             @AuthenticationPrincipal JwtAuthentication authentication) {
 
         log.info("통계 정보 조회");
@@ -301,7 +304,7 @@ public class AlgorithmProblemController {
             }
 
             // 통계 조회
-            ProblemStatisticsDto statistics = algorithmProblemService.getProblemStatistics(userId);
+            ProblemStatisticsResponseDto statistics = algorithmProblemService.getProblemStatistics(userId);
 
             log.info("통계 정보 조회 성공 - {}", statistics);
 

@@ -3,7 +3,7 @@ package kr.or.kosa.backend.algorithm.service;
 import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
 import kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
-import kr.or.kosa.backend.algorithm.dto.SubmissionRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.SubmissionRequestDto;
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackStatus;
 import kr.or.kosa.backend.algorithm.dto.enums.JudgeResult;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;

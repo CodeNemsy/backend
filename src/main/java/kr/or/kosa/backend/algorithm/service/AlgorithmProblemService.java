@@ -2,7 +2,9 @@ package kr.or.kosa.backend.algorithm.service;
 
 import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
-import kr.or.kosa.backend.algorithm.dto.*;
+import kr.or.kosa.backend.algorithm.dto.request.ProblemListRequestDto;
+import kr.or.kosa.backend.algorithm.dto.response.ProblemGenerationResponseDto;
+import kr.or.kosa.backend.algorithm.dto.response.ProblemStatisticsResponseDto;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmProblemMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -155,7 +157,7 @@ public class AlgorithmProblemService {
      * @param userId 사용자 ID (nullable)
      * @return 통계 정보
      */
-    public ProblemStatisticsDto getProblemStatistics(Long userId) {
+    public ProblemStatisticsResponseDto getProblemStatistics(Long userId) {
         log.debug("통계 정보 조회 - userId: {}", userId);
 
         try {
@@ -164,7 +166,7 @@ public class AlgorithmProblemService {
 
             // TODO: Mapper에 selectProblemStatistics 메서드 구현 필요
             // 현재는 기본값 반환 (merge 충돌 해결을 위한 임시 구현)
-            return ProblemStatisticsDto.builder()
+            return ProblemStatisticsResponseDto.builder()
                     .totalProblems(totalProblems)
                     .solvedProblems(0)      // TODO: 사용자별 해결 문제 수 조회
                     .averageAccuracy(0.0)   // TODO: 평균 정답률 계산

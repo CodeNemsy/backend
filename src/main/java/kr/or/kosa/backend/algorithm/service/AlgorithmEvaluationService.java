@@ -169,13 +169,13 @@ public class AlgorithmEvaluationService {
     }
 
     @Transactional(readOnly = true)
-    public SubmissionAiStatusDto getEvaluationStatus(Long submissionId) {
+    public SubmissionAiStatusResponseDto getEvaluationStatus(Long submissionId) {
         AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
         if (submission == null) {
             throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
         }
 
-        return SubmissionAiStatusDto.builder()
+        return SubmissionAiStatusResponseDto.builder()
                 .submissionId(submissionId)
                 .aiFeedbackStatus(
                         submission.getAiFeedbackStatus() != null

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.or.kosa.backend.algorithm.dto.AlgoProblemDto;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
-import kr.or.kosa.backend.algorithm.dto.ProblemGenerationRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.ProblemGenerationRequestDto;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemDifficulty;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemSource;
 import kr.or.kosa.backend.algorithm.dto.enums.ProblemType;

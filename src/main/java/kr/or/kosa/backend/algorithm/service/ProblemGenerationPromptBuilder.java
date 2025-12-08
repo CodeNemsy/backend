@@ -1,6 +1,6 @@
 package kr.or.kosa.backend.algorithm.service;
 
-import kr.or.kosa.backend.algorithm.dto.ProblemGenerationRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.ProblemGenerationRequestDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;

@@ -1,8 +1,8 @@
 package kr.or.kosa.backend.algorithm.service;
 
-import kr.or.kosa.backend.algorithm.dto.Judge0RequestDto;
-import kr.or.kosa.backend.algorithm.dto.Judge0ResponseDto;
 import kr.or.kosa.backend.algorithm.dto.enums.JudgeResult;
+import kr.or.kosa.backend.algorithm.dto.request.Judge0RequestDto;
+import kr.or.kosa.backend.algorithm.dto.response.Judge0ResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

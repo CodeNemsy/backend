@@ -1,8 +1,8 @@
 package kr.or.kosa.backend.algorithm.controller;
 
-import kr.or.kosa.backend.algorithm.dto.request.BojCrawlRequest;
-import kr.or.kosa.backend.algorithm.dto.request.LeetCodeCrawlRequest;
-import kr.or.kosa.backend.algorithm.dto.request.VectorDbCrawlRequest;
+import kr.or.kosa.backend.algorithm.dto.request.BojCrawlRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.LeetCodeCrawlRequestDto;
+import kr.or.kosa.backend.algorithm.dto.request.VectorDbCrawlRequestDto;
 import kr.or.kosa.backend.algorithm.service.ProblemCrawlerService;
 import kr.or.kosa.backend.algorithm.service.ProblemVectorStoreService;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/boj")
-    public ResponseEntity<?> crawlBojProblems(@RequestBody BojCrawlRequest request) {
+    public ResponseEntity<?> crawlBojProblems(@RequestBody BojCrawlRequestDto request) {
         log.info("📥 백준 문제 크롤링 요청: {}", request);
 
         try {
@@ -76,7 +76,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/leetcode")
-    public ResponseEntity<?> crawlLeetCodeProblems(@RequestBody LeetCodeCrawlRequest request) {
+    public ResponseEntity<?> crawlLeetCodeProblems(@RequestBody LeetCodeCrawlRequestDto request) {
         log.info("📥 LeetCode 문제 크롤링 요청: {}", request);
 
         try {
@@ -137,7 +137,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/vectordb/boj")
-    public ResponseEntity<?> collectBojToVectorDb(@RequestBody VectorDbCrawlRequest request) {
+    public ResponseEntity<?> collectBojToVectorDb(@RequestBody VectorDbCrawlRequestDto request) {
         log.info("📥 BOJ → Vector DB 수집 요청: {}", request);
 
         try {
@@ -174,7 +174,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/boj/full")
-    public ResponseEntity<?> crawlBojWithVectorDb(@RequestBody BojCrawlRequest request) {
+    public ResponseEntity<?> crawlBojWithVectorDb(@RequestBody BojCrawlRequestDto request) {
         log.info("📥 BOJ → MySQL + Vector DB 수집 요청: {}", request);
 
         try {
@@ -212,7 +212,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/vectordb/leetcode")
-    public ResponseEntity<?> collectLeetCodeToVectorDb(@RequestBody LeetCodeCrawlRequest request) {
+    public ResponseEntity<?> collectLeetCodeToVectorDb(@RequestBody LeetCodeCrawlRequestDto request) {
         log.info("📥 LeetCode → Vector DB 수집 요청: {}", request);
 
         try {
@@ -249,7 +249,7 @@ public class ProblemCrawlerController {
      * }
      */
     @PostMapping("/leetcode/full")
-    public ResponseEntity<?> crawlLeetCodeWithVectorDb(@RequestBody LeetCodeCrawlRequest request) {
+    public ResponseEntity<?> crawlLeetCodeWithVectorDb(@RequestBody LeetCodeCrawlRequestDto request) {
         log.info("📥 LeetCode → MySQL + Vector DB 수집 요청: {}", request);
 
         try {
