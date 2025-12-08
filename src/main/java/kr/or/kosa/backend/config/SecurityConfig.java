@@ -25,61 +25,66 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtProvider jwtProvider;
+        private final JwtProvider jwtProvider;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/",
-                                "/auth/github/**",
-                                "/users/login",
-                                "/users/register",
-                                "/users/password/**",
-                                "/email/**",
-                                "/swagger-ui/**", "/v3/api-docs/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
-                        UsernamePasswordAuthenticationFilter.class
-                );
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(Customizer.withDefaults())
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(
+                                                                "/",
+                                                                "/auth/github/**",
+                                                                "/oauth2/**",
+                                                                "/users/register",
+                                                                "/users/login",
+                                                                "/users/github/link",
+                                                                "/email/**",
+                                                                "/algo/**",
+                                                                "/users/password/**")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(
+                                                new JwtAuthenticationFilter(jwtProvider),
+                                                UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-    /**
-     * CORS 설정
-     */
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "https://localhost:5173"
-        ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        // @Bean
+        // public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        //
+        // http
+        // .cors(Customizer.withDefaults())
+        // .csrf(AbstractHttpConfigurer::disable)
+        // .sessionManagement(session ->
+        // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        //
+        // .authorizeHttpRequests(auth -> auth
+        // // .requestMatchers(
+        // // "/**"
+        // // )
+        // // .permitAll()
+        // .anyRequest().permitAll());
+        //
+        // // .addFilterBefore(
+        // // new JwtAuthenticationFilter(jwtProvider),
+        // // UsernamePasswordAuthenticationFilter.class
+        // // );
+        //
+        // return http.build();
+        // }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
-        return config.getAuthenticationManager();
-    }
+        @Bean
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+                        throws Exception {
+                return config.getAuthenticationManager();
+        }
 }
