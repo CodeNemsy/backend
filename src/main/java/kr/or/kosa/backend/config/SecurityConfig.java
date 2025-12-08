@@ -25,66 +25,66 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtProvider jwtProvider;
+        private final JwtProvider jwtProvider;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/",
-                                "/auth/github/**",
-                                "/oauth2/**",
-                                "/users/register",
-                                "/users/login",
-                                "/users/github/link",
-                                "/email/**",
-                                "/algo/**",
-                                "/users/password/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider),
-                        UsernamePasswordAuthenticationFilter.class
-                );
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(Customizer.withDefaults())
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(
+                                                                "/",
+                                                                "/auth/github/**",
+                                                                "/oauth2/**",
+                                                                "/users/register",
+                                                                "/users/login",
+                                                                "/users/github/link",
+                                                                "/email/**",
+                                                                "/algo/**",
+                                                                "/users/password/**")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(
+                                                new JwtAuthenticationFilter(jwtProvider),
+                                                UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//
-//        http
-//                .cors(Customizer.withDefaults())
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//
-//                .authorizeHttpRequests(auth -> auth
-//                        // .requestMatchers(
-//                        // "/**"
-//                        // )
-//                        // .permitAll()
-//                        .anyRequest().permitAll());
-//
-//        // .addFilterBefore(
-//        // new JwtAuthenticationFilter(jwtProvider),
-//        // UsernamePasswordAuthenticationFilter.class
-//        // );
-//
-//        return http.build();
-//    }
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        // @Bean
+        // public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        //
+        // http
+        // .cors(Customizer.withDefaults())
+        // .csrf(AbstractHttpConfigurer::disable)
+        // .sessionManagement(session ->
+        // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        //
+        // .authorizeHttpRequests(auth -> auth
+        // // .requestMatchers(
+        // // "/**"
+        // // )
+        // // .permitAll()
+        // .anyRequest().permitAll());
+        //
+        // // .addFilterBefore(
+        // // new JwtAuthenticationFilter(jwtProvider),
+        // // UsernamePasswordAuthenticationFilter.class
+        // // );
+        //
+        // return http.build();
+        // }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
-            throws Exception {
-        return config.getAuthenticationManager();
-    }
+        @Bean
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+                        throws Exception {
+                return config.getAuthenticationManager();
+        }
 }
