@@ -1,11 +1,11 @@
 -- =============================================
 -- AUTO_INCREMENT 적용된 최종 알고리즘 도메인 MySQL DDL
 -- =============================================
--- SET NAMES utf8mb4;
--- SET CHARACTER SET utf8mb4;
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
 -- -- 데이터베이스 생성
--- CREATE DATABASE IF NOT EXISTS `algo` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- USE `algo`;
+CREATE DATABASE IF NOT EXISTS `algo` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `algo`;
 -- -- =============================================
 -- -- 0. 사용자 테이블 (외래키 참조를 위해 먼저 생성)
 -- -- =============================================
