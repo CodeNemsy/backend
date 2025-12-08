@@ -9,30 +9,30 @@
 -- -- =============================================
 -- -- 0. 사용자 테이블 (외래키 참조를 위해 먼저 생성)
 -- -- =============================================
---     create table USERS
--- (
---     USER_ID           bigint auto_increment
---         primary key,
---     USER_EMAIL        varchar(255)                                               not null,
---     USER_PW           varchar(255)                                               not null,
---     USER_NAME         varchar(100)                                               not null,
---     USER_NICKNAME     varchar(50)                                                not null,
---     USER_IMAGE        varchar(500)                                               null,
---     USER_GRADE        int                              default 1                 not null,
---     USER_ROLE         enum ('ROLE_USER', 'ROLE_ADMIN') default 'ROLE_USER'       not null,
---     USER_ISDELETED    tinyint(1)                       default 0                 not null,
---     USER_DELETEDAT    datetime                                                   null,
---     USER_CREATEDAT    datetime                         default CURRENT_TIMESTAMP not null,
---     USER_UPDATEDAT    datetime                         default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
---     USER_ENABLED      tinyint(1)                       default 1                 not null,
---     USER_ISSUBSCRIBED tinyint(1)                       default 0                 not null,
---     constraint UQ_USERS_EMAIL
---         unique (USER_EMAIL),
---     constraint UQ_USERS_NICKNAME
---         unique (USER_NICKNAME)
--- );
--- INSERT INTO USERS (USER_ID, USER_EMAIL, USER_PW, USER_NAME, USER_NICKNAME, USER_IMAGE, USER_GRADE, USER_ROLE, USER_ISDELETED, USER_DELETEDAT, USER_CREATEDAT, USER_UPDATEDAT, USER_ENABLED, USER_ISSUBSCRIBED) 
--- VALUES (1, 'dummyuser@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz0123456789.hashed.password.string', '테스트사용자', '더미닉네임1', NULL, 1, 'ROLE_USER', 0, NULL, NOW(), NOW(), 1, 0);
+    create table USERS
+(
+    USER_ID           bigint auto_increment
+        primary key,
+    USER_EMAIL        varchar(255)                                               not null,
+    USER_PW           varchar(255)                                               not null,
+    USER_NAME         varchar(100)                                               not null,
+    USER_NICKNAME     varchar(50)                                                not null,
+    USER_IMAGE        varchar(500)                                               null,
+    USER_GRADE        int                              default 1                 not null,
+    USER_ROLE         enum ('ROLE_USER', 'ROLE_ADMIN') default 'ROLE_USER'       not null,
+    USER_ISDELETED    tinyint(1)                       default 0                 not null,
+    USER_DELETEDAT    datetime                                                   null,
+    USER_CREATEDAT    datetime                         default CURRENT_TIMESTAMP not null,
+    USER_UPDATEDAT    datetime                         default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    USER_ENABLED      tinyint(1)                       default 1                 not null,
+    USER_ISSUBSCRIBED tinyint(1)                       default 0                 not null,
+    constraint UQ_USERS_EMAIL
+        unique (USER_EMAIL),
+    constraint UQ_USERS_NICKNAME
+        unique (USER_NICKNAME)
+);
+INSERT INTO USERS (USER_ID, USER_EMAIL, USER_PW, USER_NAME, USER_NICKNAME, USER_IMAGE, USER_GRADE, USER_ROLE, USER_ISDELETED, USER_DELETEDAT, USER_CREATEDAT, USER_UPDATEDAT, USER_ENABLED, USER_ISSUBSCRIBED) 
+VALUES (1, 'dummyuser@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz0123456789.hashed.password.string', '테스트사용자', '더미닉네임1', NULL, 1, 'ROLE_USER', 0, NULL, NOW(), NOW(), 1, 0);
 -- =============================================
 -- 1. 알고리즘 문제 테이블 (SQL 문제 지원 추가)
 -- =============================================
@@ -53,6 +53,10 @@ CREATE TABLE `ALGO_PROBLEMS` (
     `ALGO_UPDATED_AT` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
     `ALGO_PROBLEM_TAGS` JSON NULL COMMENT '문제 태그 배열',
     `ALGO_PROBLEM_STATUS` TINYINT(1) DEFAULT 1 COMMENT '문제 활성화 상태',
+    -- LLM 문제 생성 전용 컬럼
+    `CONSTRAINTS` TEXT NULL COMMENT '제약 조건 (LLM 생성)',
+    `INPUT_FORMAT` TEXT NULL COMMENT '입력 형식 설명 (LLM 생성)',
+    `OUTPUT_FORMAT` TEXT NULL COMMENT '출력 형식 설명 (LLM 생성)',
     -- 인덱스
     INDEX `idx_difficulty_source` (`ALGO_PROBLEM_DIFFICULTY`, `ALGO_PROBLEM_SOURCE`),
     INDEX `idx_created_at` (`ALGO_CREATED_AT` DESC),
@@ -256,38 +260,38 @@ INSERT INTO LANGUAGE_CONSTANTS (LANGUAGE_NAME, LANGUAGE_TYPE, TIME_FACTOR, TIME_
 -- 샘플 데이터 삽입 (문제)
 -- =============================================
 /* 1. ALGO_PROBLEMS 더미 데이터 삽입 */
-INSERT INTO ALGO_PROBLEMS (ALGO_PROBLEM_TITLE, ALGO_PROBLEM_DESCRIPTION, ALGO_PROBLEM_DIFFICULTY, ALGO_PROBLEM_SOURCE, PROBLEM_TYPE, INIT_SCRIPT, TIMELIMIT, MEMORYLIMIT, ALGO_CREATER, ALGO_PROBLEM_TAGS, ALGO_PROBLEM_STATUS) VALUES
-('A+B 계산하기', '두 정수 A와 B를 입력받아 A+B를 출력하세요.', 'BRONZE', 'AI_GENERATED', 'ALGORITHM', NULL, 1000, 256, 1, '["수학", "사칙연산"]', 1),
-('최댓값 찾기', 'N개의 정수가 주어질 때, 이 중 최댓값을 찾으세요.', 'SILVER', 'BOJ', 'ALGORITHM', NULL, 2000, 512, 1, '["구현", "정렬"]', 1),
-('피보나치 수열 (DP)', 'N번째 피보나치 수를 구하세요. (N <= 40)', 'SILVER', 'CUSTOM', 'ALGORITHM', NULL, 1000, 256, 1, '["다이나믹 프로그래밍", "재귀"]', 1),
-('미로 탈출 최단 경로', '(1, 1)에서 (N, M)까지의 최단 경로 길이를 BFS로 구하세요.', 'GOLD', 'AI_GENERATED', 'ALGORITHM', NULL, 5000, 512, 1, '["그래프 이론", "BFS"]', 1),
-('가장 긴 증가하는 부분 수열 (LIS)', '가장 긴 증가하는 부분 수열의 길이를 구하는 문제입니다.', 'PLATINUM', 'BOJ', 'ALGORITHM', NULL, 3000, 512, 1, '["다이나믹 프로그래밍", "이분 탐색"]', 1),
+INSERT INTO ALGO_PROBLEMS (ALGO_PROBLEM_TITLE, ALGO_PROBLEM_DESCRIPTION, ALGO_PROBLEM_DIFFICULTY, ALGO_PROBLEM_SOURCE, PROBLEM_TYPE, INIT_SCRIPT, TIMELIMIT, MEMORYLIMIT, ALGO_CREATER, ALGO_PROBLEM_TAGS, ALGO_PROBLEM_STATUS, CONSTRAINTS, INPUT_FORMAT, OUTPUT_FORMAT) VALUES
+('A+B 계산하기', '두 정수 A와 B를 입력받아 A+B를 출력하세요.', 'BRONZE', 'AI_GENERATED', 'ALGORITHM', NULL, 1000, 256, 1, '["수학", "사칙연산"]', 1, '1 <= A, B <= 1000', '첫째 줄에 정수 A와 B가 공백으로 구분되어 주어진다.', '첫째 줄에 A+B를 출력한다.'),
+('최댓값 찾기', 'N개의 정수가 주어질 때, 이 중 최댓값을 찾으세요.', 'SILVER', 'BOJ', 'ALGORITHM', NULL, 2000, 512, 1, '["구현", "정렬"]', 1, '1 <= N <= 100000, -10^9 <= 각 정수 <= 10^9', '첫째 줄에 정수의 개수 N이 주어진다.\n둘째 줄에 N개의 정수가 공백으로 구분되어 주어진다.', '첫째 줄에 주어진 정수 중 최댓값을 출력한다.'),
+('피보나치 수열 (DP)', 'N번째 피보나치 수를 구하세요. (N <= 40)', 'SILVER', 'CUSTOM', 'ALGORITHM', NULL, 1000, 256, 1, '["다이나믹 프로그래밍", "재귀"]', 1, '0 <= N <= 40', '첫째 줄에 정수 N이 주어진다.', '첫째 줄에 N번째 피보나치 수를 출력한다.'),
+('미로 탈출 최단 경로', '(1, 1)에서 (N, M)까지의 최단 경로 길이를 BFS로 구하세요.', 'GOLD', 'AI_GENERATED', 'ALGORITHM', NULL, 5000, 512, 1, '["그래프 이론", "BFS"]', 1, '1 <= N, M <= 1000', '첫째 줄에 N과 M이 주어진다.\n다음 N개의 줄에 M개의 숫자가 주어진다. (1: 이동 가능, 0: 벽)', '첫째 줄에 (1,1)에서 (N,M)까지의 최단 경로 길이를 출력한다.'),
+('가장 긴 증가하는 부분 수열 (LIS)', '가장 긴 증가하는 부분 수열의 길이를 구하는 문제입니다.', 'PLATINUM', 'BOJ', 'ALGORITHM', NULL, 3000, 512, 1, '["다이나믹 프로그래밍", "이분 탐색"]', 1, '1 <= N <= 100000, 1 <= 각 원소 <= 10^9', '첫째 줄에 수열의 크기 N이 주어진다.\n둘째 줄에 수열을 이루는 N개의 정수가 주어진다.', '첫째 줄에 가장 긴 증가하는 부분 수열의 길이를 출력한다.'),
 ('SQL 1. 모든 학생 조회', 'STUDENTS 테이블의 모든 컬럼을 조회하세요.', 'BRONZE', 'AI_GENERATED', 'SQL',
     'CREATE TABLE STUDENTS (STUDENT_ID INT PRIMARY KEY, NAME VARCHAR(100), AGE INT, GRADE INT);
     INSERT INTO STUDENTS VALUES (1, ''김철수'', 20, 1), (2, ''이영희'', 21, 2), (3, ''박민수'', 20, 1);',
-    1000, 256, 1, '["SELECT", "기초"]', 1
+    1000, 256, 1, '["SELECT", "기초"]', 1, NULL, NULL, NULL
 ),
 ('SQL 2. 2학년 학생의 이름과 나이', 'STUDENTS에서 GRADE가 2인 학생들의 NAME과 AGE를 조회하세요.', 'SILVER', 'CUSTOM', 'SQL',
     'CREATE TABLE STUDENTS (STUDENT_ID INT PRIMARY KEY, NAME VARCHAR(100), AGE INT, GRADE INT);
     INSERT INTO STUDENTS VALUES (1, ''김철수'', 20, 1), (2, ''이영희'', 21, 2), (3, ''박민수'', 20, 1), (4, ''최지수'', 22, 2);',
-    1000, 256, 1, '["WHERE", "SELECT"]', 1
+    1000, 256, 1, '["WHERE", "SELECT"]', 1, NULL, NULL, NULL
 ),
 ('SQL 3. 부서별 평균 급여 계산', 'DEPT_ID별 평균 급여(SALARY)를 정수로 계산하세요. 컬럼명은 DEPT_ID, AVG_SALARY.', 'GOLD', 'AI_GENERATED', 'SQL',
     'CREATE TABLE EMPLOYEES (EMP_ID INT PRIMARY KEY, NAME VARCHAR(100), DEPT_ID INT, SALARY INT);
     INSERT INTO EMPLOYEES VALUES (101, ''A'', 10, 50000), (102, ''B'', 20, 60000), (103, ''C'', 10, 55000), (104, ''D'', 20, 62000), (105, ''E'', 30, 70000);',
-    1000, 256, 1, '["GROUP BY", "AVG", "ROUND"]', 1
+    1000, 256, 1, '["GROUP BY", "AVG", "ROUND"]', 1, NULL, NULL, NULL
 ),
 ('SQL 4. 상품 판매 기록 테이블 조인', 'PRODUCTS와 SALES를 조인하여 상품명(PRODUCT_NAME)과 판매 수량(QUANTITY)을 조회하세요.', 'SILVER', 'CUSTOM', 'SQL',
     'CREATE TABLE PRODUCTS (PRODUCT_ID INT PRIMARY KEY, PRODUCT_NAME VARCHAR(100));
     CREATE TABLE SALES (SALE_ID INT PRIMARY KEY, PRODUCT_ID INT, QUANTITY INT);
     INSERT INTO PRODUCTS VALUES (1, ''노트북''), (2, ''마우스''), (3, ''키보드'');
     INSERT INTO SALES VALUES (1001, 1, 5), (1002, 2, 10), (1003, 1, 3);',
-    1000, 256, 1, '["JOIN", "INNER JOIN"]', 1
+    1000, 256, 1, '["JOIN", "INNER JOIN"]', 1, NULL, NULL, NULL
 ),
-('SQL 5. 급여가 가장 높은 직원', '가장 높은 급여를 받는 직원의 NAME을 조회하세요.', 'GOLD', 'AI_GENERATED', 'SQL',
+('SQL 5. 급여가 가장 높은 직���', '가장 높은 급여를 받는 직원의 NAME을 조회하세요.', 'GOLD', 'AI_GENERATED', 'SQL',
     'CREATE TABLE EMPLOYEES (EMP_ID INT PRIMARY KEY, NAME VARCHAR(100), SALARY INT);
     INSERT INTO EMPLOYEES VALUES (1, ''Alpha'', 70000), (2, ''Beta'', 85000), (3, ''Gamma'', 70000), (4, ''Delta'', 60000);',
-    1000, 256, 1, '["ORDER BY", "LIMIT", "MAX"]', 1
+    1000, 256, 1, '["ORDER BY", "LIMIT", "MAX"]', 1, NULL, NULL, NULL
 );
 
 -- =============================================
@@ -481,12 +485,6 @@ CREATE TABLE `CODERESULT` (
 -- =============================================
 -- LLM 문제 생성 관련 테이블 확장
 -- =============================================
-
--- ALGO_PROBLEMS 테이블에 LLM 생성 문제 전용 컬럼 추가
-ALTER TABLE `ALGO_PROBLEMS`
-ADD COLUMN `CONSTRAINTS` TEXT NULL COMMENT '제약 조건 (LLM 생성)' AFTER `ALGO_PROBLEM_STATUS`,
-ADD COLUMN `INPUT_FORMAT` TEXT NULL COMMENT '입력 형식 설명 (LLM 생성)' AFTER `CONSTRAINTS`,
-ADD COLUMN `OUTPUT_FORMAT` TEXT NULL COMMENT '출력 형식 설명 (LLM 생성)' AFTER `INPUT_FORMAT`;
 
 -- 문제 생성 검증 로그 테이블 (개발자 품질 검사용)
 CREATE TABLE `PROBLEM_VALIDATION_LOGS` (
