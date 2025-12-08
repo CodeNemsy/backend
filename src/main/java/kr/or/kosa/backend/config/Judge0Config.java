@@ -11,7 +11,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
@@ -109,9 +108,9 @@ public class Judge0Config {
 
     /**
      * Judge0 API 설정 프로퍼티 (내부 클래스)
+     * @EnableConfigurationProperties로 빈 등록되므로 @Component 불필요
      */
     @Data
-    @Component
     @ConfigurationProperties(prefix = "judge0.api")
     public static class Judge0Properties {
 
