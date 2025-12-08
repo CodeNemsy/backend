@@ -22,6 +22,19 @@ public class AlgorithmSynonymDictionary {
      * value: 해당 알고리즘의 모든 동의어 (한국어, 영어, 약어 등)
      */
     private static final Map<String, Set<String>> SYNONYM_GROUPS = Map.ofEntries(
+            // === 기초 ===
+            Map.entry("array", Set.of(
+                    "배열", "array", "리스트", "list", "1차원 배열", "2차원 배열",
+                    "행렬", "matrix", "벡터", "vector")),
+
+            Map.entry("recursion", Set.of(
+                    "재귀", "recursion", "recursive", "재귀 함수", "recursive function",
+                    "재귀 호출", "재귀적")),
+
+            Map.entry("simulation", Set.of(
+                    "시뮬레이션", "simulation", "구현", "완전 탐색", "brute force",
+                    "브루트포스", "완전탐색")),
+
             // === 탐색 알고리즘 ===
             Map.entry("binary_search", Set.of(
                     "이분 탐색", "이진 탐색", "binary search", "이분탐색", "이진탐색",
@@ -49,6 +62,11 @@ public class AlgorithmSynonymDictionary {
                     "최장증가부분수열", "가장 긴 증가하는 부분 수열")),
 
             // === 그래프 알고리즘 ===
+            Map.entry("graph", Set.of(
+                    "그래프", "graph", "그래프 이론", "graph theory", "인접 리스트",
+                    "인접 행렬", "adjacency list", "adjacency matrix", "정점", "간선",
+                    "vertex", "edge", "노드", "node")),
+
             Map.entry("dijkstra", Set.of(
                     "다익스트라", "dijkstra", "최단 경로", "shortest path", "다익스트라 알고리즘",
                     "single source shortest path", "SSSP")),
@@ -101,6 +119,10 @@ public class AlgorithmSynonymDictionary {
             Map.entry("queue", Set.of(
                     "큐", "queue", "FIFO", "덱", "deque", "양방향 큐")),
 
+            Map.entry("stack_queue", Set.of(
+                    "스택", "stack", "큐", "queue", "스택/큐", "LIFO", "FIFO",
+                    "덱", "deque", "양방향 큐", "자료구조 기초")),
+
             Map.entry("priority_queue", Set.of(
                     "우선순위 큐", "priority queue", "힙", "heap", "최소 힙", "최대 힙",
                     "min heap", "max heap")),
@@ -134,8 +156,7 @@ public class AlgorithmSynonymDictionary {
 
             // === 기타 ===
             Map.entry("implementation", Set.of(
-                    "구현", "implementation", "시뮬레이션", "simulation", "완전 탐색",
-                    "brute force", "브루트포스")),
+                    "구현", "implementation", "구현 문제", "코딩", "coding")),
 
             Map.entry("bit_manipulation", Set.of(
                     "비트마스킹", "bitmask", "bit manipulation", "비트 연산", "bitwise"))
