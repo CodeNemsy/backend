@@ -3,7 +3,7 @@ package kr.or.kosa.backend.algorithm.service.validation;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
 import kr.or.kosa.backend.algorithm.dto.ValidationResultDto;
 import kr.or.kosa.backend.algorithm.dto.response.TestRunResponseDto;
-import kr.or.kosa.backend.algorithm.service.Judge0Service;
+import kr.or.kosa.backend.algorithm.service.CodeExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +23,7 @@ public class TimeRatioValidator {
 
     private static final String VALIDATOR_NAME = "TimeRatioValidator";
 
-    private final Judge0Service judge0Service;
+    private final CodeExecutorService codeExecutorService;  // Judge0 또는 Piston 선택
 
     @Value("${algorithm.validation.min-time-ratio:1.5}")
     private double minTimeRatio;
@@ -129,7 +129,7 @@ public class TimeRatioValidator {
             String codeType) {
 
         try {
-            TestRunResponseDto judgeResult = judge0Service.judgeCode(
+            TestRunResponseDto judgeResult = codeExecutorService.judgeCode(
                     code, language, testCases, timeLimit, memoryLimit
             ).get(executionTimeoutSeconds, TimeUnit.SECONDS);
 

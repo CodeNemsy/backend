@@ -49,7 +49,7 @@ public class AlgorithmSolvingService {
 
     private final AlgorithmProblemMapper problemMapper;
     private final AlgorithmSubmissionMapper submissionMapper;
-    private final Judge0Service judge0Service;
+    private final CodeExecutorService codeExecutorService;  // Judge0 또는 Piston 선택
     private final AlgorithmJudgingService judgingService;
     private final LanguageConstantService languageConstantService;
 
@@ -232,7 +232,8 @@ public class AlgorithmSolvingService {
                     dbLanguageName, problem.getTimelimit(), realTimeLimit,
                     problem.getMemorylimit(), realMemoryLimit);
 
-            CompletableFuture<TestRunResponseDto> judgeFuture = judge0Service
+            // Judge0 또는 Piston 사용 (환경 설정에 따라 자동 선택)
+            CompletableFuture<TestRunResponseDto> judgeFuture = codeExecutorService
                     .judgeCode(request.getSourceCode(), dbLanguageName, sampleTestcases, realTimeLimit, realMemoryLimit);
 
             TestRunResponseDto judgeResult = judgeFuture.get();

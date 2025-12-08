@@ -28,7 +28,7 @@ public class AlgorithmJudgingService {
 
     private final AlgorithmSubmissionMapper submissionMapper;
     private final AlgorithmProblemMapper problemMapper;
-    private final Judge0Service judge0Service;
+    private final CodeExecutorService codeExecutorService;  // Judge0 또는 Piston 선택
     private final AlgorithmEvaluationService evaluationService;
     private final LanguageConstantService languageConstantService;
 
@@ -56,8 +56,8 @@ public class AlgorithmJudgingService {
             log.info("언어별 제한 적용 - 언어: {}, 시간: {}ms, 메모리: {}MB",
                     dbLanguageName, realTimeLimit, realMemoryLimit);
 
-            // 3. Judge0 채점 실행 (AlgoTestcaseDto 직접 전달)
-            CompletableFuture<TestRunResponseDto> judgeFuture = judge0Service.judgeCode(
+            // 3. 코드 채점 실행 (Judge0 또는 Piston 사용)
+            CompletableFuture<TestRunResponseDto> judgeFuture = codeExecutorService.judgeCode(
                     request.getSourceCode(), dbLanguageName, testCases, realTimeLimit, realMemoryLimit);
 
             TestRunResponseDto judgeResult = judgeFuture.get();

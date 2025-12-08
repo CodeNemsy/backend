@@ -3,7 +3,7 @@ package kr.or.kosa.backend.algorithm.service.validation;
 import kr.or.kosa.backend.algorithm.dto.AlgoTestcaseDto;
 import kr.or.kosa.backend.algorithm.dto.ValidationResultDto;
 import kr.or.kosa.backend.algorithm.dto.response.TestRunResponseDto;
-import kr.or.kosa.backend.algorithm.service.Judge0Service;
+import kr.or.kosa.backend.algorithm.service.CodeExecutorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,7 @@ public class CodeExecutionValidator {
 
     private static final String VALIDATOR_NAME = "CodeExecutionValidator";
 
-    private final Judge0Service judge0Service;
+    private final CodeExecutorService codeExecutorService;  // Judge0 또는 Piston 선택
 
     @Value("${algorithm.validation.execution-timeout:30}")
     private int executionTimeoutSeconds;
@@ -70,7 +70,7 @@ public class CodeExecutionValidator {
 
         // 3. Judge0로 코드 실행
         try {
-            TestRunResponseDto judgeResult = judge0Service.judgeCode(
+            TestRunResponseDto judgeResult = codeExecutorService.judgeCode(
                     optimalCode,
                     language,
                     testCases,
