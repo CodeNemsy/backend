@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -136,7 +137,6 @@ public class PaymentsServiceImpl implements PaymentsService {
         Payments confirmedPayment = Payments.builder()
                 .paymentKey(paymentKey)
                 .orderId(orderId)
-                .status("DONE")
                 .payMethod(tossResult.getPayMethod())
                 .pgRawResponse(tossResult.getRawJson())
                 .cardCompany(tossResult.getCardCompany())
@@ -144,6 +144,30 @@ public class PaymentsServiceImpl implements PaymentsService {
                 .approvedAt(tossResult.getApprovedAt())
                 .build();
 
+        // 단건조회로 추가 검증
+        boolean verified = true;
+        String inquiryRaw = null;
+        try {
+            Map<String, Object> inquiry = tossPaymentsClient.inquirePayment(paymentKey, orderId);
+            inquiryRaw = inquiry != null ? inquiry.toString() : null;
+            verified = isInquiryConsistent(inquiry, orderId, amount);
+        } catch (Exception e) {
+            verified = false;
+            inquiryRaw = "INQUIRY_ERROR: " + e.getMessage();
+        }
+
+        if (!verified) {
+            confirmedPayment.setStatus("ERROR");
+            if (inquiryRaw != null) {
+                confirmedPayment.setPgRawResponse(inquiryRaw);
+            }
+            paymentsMapper.updatePaymentStatus(confirmedPayment);
+            // 검증 실패 시 포인트 차감/구독 활성화 스킵
+            return paymentsMapper.findPaymentByOrderId(orderId).orElseThrow(() ->
+                    new IllegalStateException("검증 실패: 결제 상태 업데이트 후 조회 실패"));
+        }
+
+        confirmedPayment.setStatus("DONE");
         paymentsMapper.updatePaymentStatus(confirmedPayment);
 
         // 포인트 실제 차감
@@ -215,11 +239,71 @@ public class PaymentsServiceImpl implements PaymentsService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, Object> inquirePayment(Long userId, String paymentKey, String orderId) {
+        boolean hasPaymentKey = paymentKey != null && !paymentKey.isBlank();
+        boolean hasOrderId = orderId != null && !orderId.isBlank();
+
+        if (!hasPaymentKey && !hasOrderId) {
+            throw new IllegalArgumentException("paymentKey 또는 orderId 중 하나는 필수입니다.");
+        }
+
+        Payments payment = null;
+        if (hasPaymentKey) {
+            payment = paymentsMapper.findPaymentByPaymentKey(paymentKey).orElse(null);
+        }
+        if (payment == null && hasOrderId) {
+            payment = paymentsMapper.findPaymentByOrderId(orderId).orElse(null);
+        }
+
+        if (payment != null) {
+            Long ownerId = payment.getUserId();
+            if (ownerId != null && userId != null && !ownerId.equals(userId)) {
+                throw new IllegalStateException("본인 결제건이 아니어서 조회할 수 없습니다.");
+            }
+            if (!hasPaymentKey) {
+                paymentKey = payment.getPaymentKey();
+            }
+            if (!hasOrderId) {
+                orderId = payment.getOrderId();
+            }
+        }
+
+        // 토스 단건조회 호출 (paymentKey 우선, 없으면 orderId)
+        return tossPaymentsClient.inquirePayment(paymentKey, orderId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Payments> getPaymentHistory(Long userId, LocalDate from, LocalDate to, String status) {
         LocalDateTime fromDt = (from != null) ? from.atStartOfDay() : null;
         LocalDateTime toDt = (to != null) ? to.plusDays(1).atStartOfDay() : null;
         String normalizedStatus = (status == null || status.isBlank()) ? null : status.toUpperCase();
         return paymentsMapper.findPaymentsInRange(userId, fromDt, toDt, normalizedStatus);
+    }
+
+    private boolean isInquiryConsistent(Map<String, Object> inquiry, String orderId, Long amount) {
+        if (inquiry == null) return false;
+        Object statusObj = inquiry.get("status");
+        String status = statusObj != null ? statusObj.toString().toUpperCase() : "";
+        if (!"DONE".equals(status)) return false;
+
+        Object orderIdObj = inquiry.get("orderId");
+        if (orderIdObj instanceof String s && !s.isBlank() && orderId != null && !orderId.equals(s)) {
+            return false;
+        }
+
+        long amountFromToss = 0L;
+        Object totalAmount = inquiry.get("totalAmount");
+        Object amountField = inquiry.get("amount");
+        if (totalAmount instanceof Number n) {
+            amountFromToss = n.longValue();
+        } else if (amountField instanceof Number n2) {
+            amountFromToss = n2.longValue();
+        }
+        if (amount != null && amount > 0 && amountFromToss > 0 && amountFromToss != amount) {
+            return false;
+        }
+        return true;
     }
 
     // ================== 역할별 private 메소드 ==================

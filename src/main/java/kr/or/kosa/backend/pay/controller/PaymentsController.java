@@ -193,6 +193,35 @@ public class PaymentsController {
         return ResponseEntity.ok(history);
     }
 
+    /**
+     * 3-2. 토스 단건조회 (paymentKey 또는 orderId)
+     */
+    @GetMapping("/inquiry")
+    public ResponseEntity<?> inquirePayment(
+            @AuthenticationPrincipal JwtUserDetails user,
+            @RequestParam(required = false) String paymentKey,
+            @RequestParam(required = false) String orderId
+    ) {
+        try {
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("code", "UNAUTHORIZED", "message", "로그인이 필요합니다."));
+            }
+
+            Map<String, Object> result = paymentsService.inquirePayment(user.id(), paymentKey, orderId);
+            return ResponseEntity.ok(result);
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("code", "PAYMENT_INQUIRY_ERROR", "message", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", "PAYMENT_INQUIRY_INTERNAL_ERROR",
+                            "message", "단건 조회 처리 중 서버 오류가 발생했습니다."));
+        }
+    }
+
 
     /**
      * 4. 결제 취소(환불)

@@ -82,7 +82,7 @@ dependencies {
 
     /* Mustache */
     implementation 'org.springframework.boot:spring-boot-starter-mustache'
-    
+
     /* DB */
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'com.mysql:mysql-connector-j:9.3.0'
