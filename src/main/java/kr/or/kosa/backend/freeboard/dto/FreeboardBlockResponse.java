@@ -19,5 +19,5 @@ public class FreeboardBlockResponse {
     private String type;     // "tiptap" or "code"
     private Object content;  // tiptap JSON or code string
     private String language; // code block일 때 사용
-    private Integer order;
+    private Integer order;   // 순서
 }
