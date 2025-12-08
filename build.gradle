@@ -69,7 +69,13 @@ dependencies {
     /* ANTLR */
     antlr "org.antlr:antlr4:4.13.1"
     implementation 'org.antlr:antlr4-runtime:4.13.1'
+}
 
+generateGrammarSource {
+    outputDirectory = file("${project.buildDir}/generated/sources/antlr/main/kr/or/kosa/backend/codenose/parser")
+}
+
+dependencies {
     /* Spring Integration */
     implementation 'org.springframework.boot:spring-boot-starter-integration'
 
