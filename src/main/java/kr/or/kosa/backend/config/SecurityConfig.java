@@ -42,7 +42,7 @@ public class SecurityConfig {
                                 "/users/password/**",
                                 "/email/**",
                                 "/swagger-ui/**", "/v3/api-docs/**",
-                                "/algo/**"
+                                "/algo/**", "/payments/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
