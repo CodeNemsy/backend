@@ -29,29 +29,33 @@ public class SecurityConfig {
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-                http
-                                .cors(Customizer.withDefaults())
-                                .csrf(AbstractHttpConfigurer::disable)
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers(
-                                                                "/",
-                                                                "/auth/github/**",
-                                                                "/oauth2/**",
-                                                                "/users/register",
-                                                                "/users/login",
-                                                                "/users/github/link",
-                                                                "/email/**",
-                                                                "/algo/**",
-                                                                "/users/password/**")
-                                                .permitAll()
-                                                .anyRequest().authenticated())
-                                .addFilterBefore(
-                                                new JwtAuthenticationFilter(jwtProvider),
-                                                UsernamePasswordAuthenticationFilter.class);
+            http
+                    .cors(Customizer.withDefaults())
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .sessionManagement(session -> session
+                            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .addFilterBefore(
+                            new JwtAuthenticationFilter(jwtProvider),
+                            UsernamePasswordAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(
+                                    "/",
+                                    "/auth/github/**",
+                                    "/oauth2/**",
+                                    "/users/register",
+                                    "/users/login",
+                                    "/users/github/link",
+                                    "/email/**",
+                                    "/algo/**",
+                                    "/users/password/**")
+                            .permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/freeboard", "/freeboard/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/codeboard", "/codeboard/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/like", "/like/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/comment", "/comment/**").permitAll()
+                            .anyRequest().authenticated());
 
-                return http.build();
+            return http.build();
         }
 
         // @Bean
