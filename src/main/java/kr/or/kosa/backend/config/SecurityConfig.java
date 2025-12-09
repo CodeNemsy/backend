@@ -20,6 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
+
+import jakarta.servlet.DispatcherType;
 
 @Configuration
 @RequiredArgsConstructor
@@ -39,43 +42,24 @@ public class SecurityConfig {
                                 "/",
                                 "/auth/github/**",
                                 "/oauth2/**",
-                                "/users/**",
+                                "/users/register",
+                                "/users/login",
+                                "/users/github/link",
+                                "/users/password/**",
                                 "/email/**",
-                                "/chat/**",
                                 "/algo/**",
-                                "/freeboard/**")
+                                "/api/**",
+                                "/analysis/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/freeboard/**", "/codeboard/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtProvider),
                         UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
 
-    // @Bean
-    // public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    //
-    // http
-    // .cors(Customizer.withDefaults())
-    // .csrf(AbstractHttpConfigurer::disable)
-    // .sessionManagement(session ->
-    // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-    //
-    // .authorizeHttpRequests(auth -> auth
-    // // .requestMatchers(
-    // // "/**"
-    // // )
-    // // .permitAll()
-    // .anyRequest().permitAll());
-    //
-    // // .addFilterBefore(
-    // // new JwtAuthenticationFilter(jwtProvider),
-    // // UsernamePasswordAuthenticationFilter.class
-    // // );
-    //
-    // return http.build();
-    // }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
