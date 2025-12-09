@@ -42,7 +42,8 @@ public class SecurityConfig {
                                 "/users/**",
                                 "/email/**",
                                 "/chat/**",
-                                "/algo/**")
+                                "/algo/**",
+                                "/freeboard/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(

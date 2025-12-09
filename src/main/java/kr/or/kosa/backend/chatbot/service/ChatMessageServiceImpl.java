@@ -8,14 +8,16 @@ import kr.or.kosa.backend.chatbot.mapper.ChatbotMessageMapper;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatModel;
 
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,48 +25,79 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
     private final ChatbotMessageMapper chatbotMessageMapper;
     private final OpenAiChatModel openAiChatModel;
+    private final PromptBuilder promptBuilder; // ⭐ PromptBuilder 주입됨
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    /**
+     * ================================
+     *  Public sendMessage()
+     * ================================
+     */
     @Override
     public ChatResponseDto sendMessage(ChatRequestDto request) {
         Long sessionId = request.getSessionId() != null ? request.getSessionId() : 1L;
+        String content = request.getContent();
 
-        // 1) User 메시지 저장
+        // 1) 사용자 메시지 저장
+        saveUserMessage(sessionId, request);
+
+        // 2) OpenAI 호출 (자동 프롬프트 분기 포함)
+        String assistantText = callOpenAI(content);
+
+        // 3) assistant 메시지 저장
+        saveAssistantMessage(sessionId, assistantText);
+
+        // 4) 세션 메시지 반환
+        return getMessages(sessionId, 50);
+    }
+
+    /**
+     * ================================
+     *  OpenAI 호출
+     * ================================
+     */
+    private String callOpenAI(String userMessage) {
+
+        // ⭐ PromptBuilder를 사용하여 프롬프트 생성
+        SystemMessage systemPrompt = promptBuilder.buildPrompt(userMessage);
+        UserMessage userPrompt = new UserMessage(userMessage);
+
+        Prompt prompt = new Prompt(List.of(systemPrompt, userPrompt));
+        ChatResponse response = openAiChatModel.call(prompt);
+
+        return response.getResult().getOutput().getText();
+    }
+
+    /**
+     * ================================
+     *  Message DB 저장
+     * ================================
+     */
+    private void saveUserMessage(Long sessionId, ChatRequestDto request) {
         ChatbotMessage userMsg = new ChatbotMessage();
         userMsg.setSessionId(sessionId);
         userMsg.setUserId(request.getUserId());
         userMsg.setRole("user");
         userMsg.setContent(request.getContent());
         chatbotMessageMapper.insertMessage(userMsg);
+    }
 
-        // 2) OpenAI 호출
-        String assistantText = callOpenAI(request.getContent());
-
-        // 3) assistant 메시지 저장
+    private void saveAssistantMessage(Long sessionId, String content) {
         ChatbotMessage assistantMsg = new ChatbotMessage();
         assistantMsg.setSessionId(sessionId);
         assistantMsg.setUserId(null);
         assistantMsg.setRole("assistant");
-        assistantMsg.setContent(assistantText);
+        assistantMsg.setContent(content);
         chatbotMessageMapper.insertMessage(assistantMsg);
-
-        // 4) 최신 메시지 반환
-        return getMessages(sessionId, 50);
     }
 
     /**
-     * OpenAI 호출
+     * ================================
+     *  메시지 조회
+     * ================================
      */
-    private String callOpenAI(String userMessage) {
-
-        // 최신 Spring AI 방식 → 옵션 없이 바로 호출
-        return openAiChatModel.call(
-                new UserMessage(userMessage)
-        );
-    }
-
     @Override
     public ChatResponseDto getMessages(Long sessionId, int limit) {
         List<ChatbotMessage> list = chatbotMessageMapper.selectMessages(sessionId, limit);
@@ -80,7 +113,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                     );
                     return dto;
                 })
-                .toList();   // ← 불변 리스트, 권장 방식
+                .toList();
 
         ChatResponseDto resp = new ChatResponseDto();
         resp.setSessionId(sessionId);
