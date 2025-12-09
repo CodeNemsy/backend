@@ -48,6 +48,8 @@ public class SecurityConfig {
                                                                 "/users/password/**",
                                                                 "/email/**",
                                                                 "/algo/**",
+                                                                "/users/password/**",
+                                                                "/admin/**")
                                                                 "/api/**",
                                                                 "/analysis/**")
                                                 .permitAll()
