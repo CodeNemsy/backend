@@ -47,12 +47,15 @@ public class SecurityConfig {
                                     "/users/github/link",
                                     "/email/**",
                                     "/algo/**",
-                                    "/users/password/**")
+                                    "/users/password/**",
+                                    "/codeAnalysis/**",
+                                    "/api/analysis/**")
                             .permitAll()
-                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/freeboard", "/freeboard/**").permitAll()
-                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/codeboard", "/codeboard/**").permitAll()
-                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/like", "/like/**").permitAll()
-                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/comment", "/comment/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/freeboard/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/codeboard/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/like/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/comment/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/analysis/**").permitAll()
                             .anyRequest().authenticated());
 
             return http.build();
