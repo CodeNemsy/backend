@@ -277,6 +277,126 @@ public class ProblemCrawlerController {
         }
     }
 
+    // ===== 배치 크롤링 API (유사도 검사용 Vector DB 구축) =====
+
+    /**
+     * BOJ 문제 배치 크롤링 (4난이도 × 24토픽 × N문제)
+     * 유사도 검사용 Vector DB 전체 구축
+     *
+     * POST /algo/crawler/vectordb/boj/batch
+     * Body: {
+     *   "problemsPerCategory": 5   // 카테고리당 수집할 문제 수 (기본: 5)
+     * }
+     *
+     * 예상 수집량: 4 × 24 × 5 = 480문제
+     * 예상 소요 시간: ~30분 (Rate Limiting 고려)
+     */
+    @PostMapping("/vectordb/boj/batch")
+    public ResponseEntity<?> batchCrawlBojToVectorDb(
+            @RequestBody(required = false) Map<String, Integer> request) {
+        int problemsPerCategory = 5;
+        if (request != null && request.containsKey("problemsPerCategory")) {
+            problemsPerCategory = request.get("problemsPerCategory");
+        }
+
+        log.info("📥 BOJ 배치 크롤링 요청 - 카테고리당 {}문제", problemsPerCategory);
+
+        try {
+            final int count = problemsPerCategory;
+            int savedCount = crawlerService.collectBojBatchToVectorDb(count, null);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "BOJ 배치 크롤링 완료",
+                    "savedCount", savedCount,
+                    "problemsPerCategory", count,
+                    "expectedTotal", 4 * 24 * count,
+                    "target", "VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("배치 크롤링 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "배치 크롤링 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 특정 난이도의 모든 토픽 크롤링
+     *
+     * POST /algo/crawler/vectordb/boj/difficulty
+     * Body: {
+     *   "difficulty": "SILVER",      // BRONZE, SILVER, GOLD, PLATINUM
+     *   "problemsPerCategory": 5
+     * }
+     */
+    @PostMapping("/vectordb/boj/difficulty")
+    public ResponseEntity<?> crawlBojByDifficulty(@RequestBody Map<String, Object> request) {
+        String difficulty = (String) request.getOrDefault("difficulty", "SILVER");
+        int problemsPerCategory = (Integer) request.getOrDefault("problemsPerCategory", 5);
+
+        log.info("📥 BOJ 난이도별 크롤링 요청 - 난이도: {}, 토픽당 {}문제", difficulty, problemsPerCategory);
+
+        try {
+            int savedCount = crawlerService.collectBojByDifficulty(difficulty, problemsPerCategory);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", difficulty + " 난이도 크롤링 완료",
+                    "savedCount", savedCount,
+                    "difficulty", difficulty,
+                    "problemsPerCategory", problemsPerCategory,
+                    "target", "VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("난이도별 크롤링 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "크롤링 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * 특정 토픽의 모든 난이도 크롤링
+     *
+     * POST /algo/crawler/vectordb/boj/topic
+     * Body: {
+     *   "topic": "dp",               // dp, greedy, bfs, dfs, etc.
+     *   "problemsPerCategory": 5
+     * }
+     */
+    @PostMapping("/vectordb/boj/topic")
+    public ResponseEntity<?> crawlBojByTopic(@RequestBody Map<String, Object> request) {
+        String topic = (String) request.getOrDefault("topic", "dp");
+        int problemsPerCategory = (Integer) request.getOrDefault("problemsPerCategory", 5);
+
+        log.info("📥 BOJ 토픽별 크롤링 요청 - 토픽: {}, 난이도당 {}문제", topic, problemsPerCategory);
+
+        try {
+            int savedCount = crawlerService.collectBojByTopic(topic, problemsPerCategory);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", topic + " 토픽 크롤링 완료",
+                    "savedCount", savedCount,
+                    "topic", topic,
+                    "problemsPerCategory", problemsPerCategory,
+                    "target", "VectorDB"
+            ));
+
+        } catch (Exception e) {
+            log.error("토픽별 크롤링 실패", e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "success", false,
+                    "message", "크롤링 중 오류 발생: " + e.getMessage()
+            ));
+        }
+    }
+
     // ===== Vector DB 검색 API =====
 
     /**
