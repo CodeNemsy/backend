@@ -8,11 +8,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
@@ -30,13 +32,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // GitHub OAuth(login) 경로는 JWT 검사 제외
-        if (path.startsWith("/auth/github")) {
+        // 🔥 GitHub 관련 URL은 JWT 검사 제외
+        if (path.startsWith("/auth/github/login-url") ||
+                path.startsWith("/auth/github/callback") ||
+                path.startsWith("/auth/github/user")) {
+
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 그 외의 경로는 JWT 검증
+        // 🔥 그 외의 경로는 JWT 검증
         String token = resolveToken(request);
 
         try {
@@ -47,6 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 JwtAuthentication auth = new JwtAuthentication(userDetails);
                 SecurityContextHolder.getContext().setAuthentication(auth);
+
+                // 컨트롤러에서 @RequestAttribute로 userId를 받을 수 있도록 설정
+                request.setAttribute("userId", userId);
             }
 
             filterChain.doFilter(request, response);

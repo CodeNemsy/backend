@@ -112,6 +112,38 @@ public class TossPaymentsClient {
     /**
      * 환불 요청 – 성공 시 새 status("CANCELED" 등)을 반환
      */
+    public Map<String, Object> inquirePayment(String paymentKey, String orderId) {
+        String url;
+        if (paymentKey != null && !paymentKey.isBlank()) {
+            url = String.format("https://api.tosspayments.com/v1/payments/%s", paymentKey);
+        } else if (orderId != null && !orderId.isBlank()) {
+            url = String.format("https://api.tosspayments.com/v1/payments/orders/%s", orderId);
+        } else {
+            throw new IllegalArgumentException("paymentKey 또는 orderId 중 하나는 필수입니다.");
+        }
+
+        HttpHeaders headers = createHeaders();
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> responseBody = (Map<String, Object>) response.getBody();
+
+            if (!response.getStatusCode().is2xxSuccessful() || responseBody == null) {
+                throw new IllegalStateException("토스 단건조회 응답이 유효하지 않습니다: HTTP " + response.getStatusCode());
+            }
+
+            return responseBody;
+
+        } catch (HttpClientErrorException e) {
+            throw new IllegalStateException("토스 단건조회 실패: " + e.getResponseBodyAsString(), e);
+        } catch (HttpServerErrorException e) {
+            throw new IllegalStateException("토스 단건조회 서버 오류: " + e.getResponseBodyAsString(), e);
+        }
+    }
+
     public String cancelPayment(String paymentKey, String cancelReason) {
         HttpHeaders headers = createHeaders();
         Map<String, Object> body = Map.of("cancelReason", cancelReason);
