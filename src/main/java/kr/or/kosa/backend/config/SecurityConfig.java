@@ -5,6 +5,7 @@ import java.util.List;
 import kr.or.kosa.backend.security.jwt.JwtAuthenticationFilter;
 import kr.or.kosa.backend.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,8 +23,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpMethod;
 
-import jakarta.servlet.DispatcherType;
-
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -35,9 +34,12 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
+
+                        // 인증 없이 접근 허용
                         .requestMatchers(
                                 "/",
                                 "/auth/github/**",
@@ -48,15 +50,27 @@ public class SecurityConfig {
                                 "/users/password/**",
                                 "/email/**",
                                 "/algo/**",
-                                "/api/**",
-                                "/analysis/**")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/freeboard/**", "/codeboard/**")
-                        .permitAll()
-                        .anyRequest().authenticated())
+                                "/admin/**",
+                                "/codeAnalysis/**",
+                                "/api/analysis/**"
+                        ).permitAll()
+
+                        // 게시글 / 댓글 / 좋아요 조회는 비로그인 허용
+                        .requestMatchers(HttpMethod.GET, "/freeboard/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/codeboard/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/comment", "/comment/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/like/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/analysis/**").permitAll()
+
+                        // 나머지는 전부 인증 필요
+                        .anyRequest().authenticated()
+                )
+                // JWT 인증 필터 (한 번만 등록)
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtProvider),
-                        UsernamePasswordAuthenticationFilter.class);
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
         return http.build();
     }
 
@@ -69,5 +83,19 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
             throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of("Authorization"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

@@ -3,41 +3,45 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="kr.or.kosa.backend.admin.mapper.AdminUserMapper">
+<mapper namespace="kr.or.kosa.backend.admin.mapper.AdminDashBoardMapper">
 
-    <!-- 유저 검색 -->
-    <resultMap id="findDashboardCondition"
-               type="kr.or.kosa.backend.admin.dto.response.UserFindResponseDto">
-        <id     column="USER_ID"            property="userId"/>
-        <result column="USER_EMAIL"         property="userEmail"/>
-        <result column="USER_NICKNAME"      property="userNickName"/>
-        <result column="USER_GRADE"         property="userGrade"/>
-        <result column="USER_ROLE"          property="userRole"/>
-    </resultMap>
+    <select id="userSignUpCount" resultType="kr.or.kosa.backend.admin.dto.response.AdminDashBoardUserCountResponseDto">
+        SELECT year, month, COUNT (*) AS user_count
+        FROM (
+            SELECT YEAR (USER_CREATEDAT) AS year, MONTH (USER_CREATEDAT) AS month
+            FROM USERS
+            WHERE USER_ROLE = 'ROLE_USER'
+            AND USER_DELETEDAT IS NULL
+            ) AS sub
+        GROUP BY year, month
+        WITH ROLLUP
+        ORDER BY year, month
+    </select>
 
-    <!-- 이름 중복 방지를 위해 id 변경 -->
-    <select id="findDashboardConditionQuery"
-            resultMap="findDashboardCondition">
 
-        SELECT USER_ID, USER_EMAIL, USER_NICKNAME, USER_GRADE, USER_ROLE
+    <select id="todaySignUpCount" resultType="int">
+        SELECT COUNT(*) AS today_user_count
         FROM USERS
-        <where>
-            <choose>
-                <when test="filter instanceof java.lang.Integer">
-                    USER_ISDELETED = #{filter}
-                </when>
-                <when test="filter instanceof java.lang.String and filter != ''">
-                    USER_ROLE = #{filter}
-                </when>
-            </choose>
+        WHERE USER_ROLE = 'ROLE_USER'
+          AND USER_DELETEDAT IS NULL
+          AND DATE (USER_CREATEDAT) = CURDATE()
+    </select>
 
-            <if test="userEmail != null and userEmail != ''">
-                AND USER_EMAIL LIKE CONCAT('%', #{userEmail}, '%')
-            </if>
-        </where>
-        ORDER BY ${sortField} ${sortOrder}
-        LIMIT #{limit} OFFSET #{offset}
+    <select id="todayPaymentSummary" resultType="kr.or.kosa.backend.admin.dto.TodayPaymentSummaryDto">
+        select count(*)               as today_payment_count,
+               IFNULL(sum(amount), 0) as today_total_pay
+        from payments
+        where DATE (approved_at) = CURDATE()
+    </select>
 
+    <select id="paymentSummary" resultType="kr.or.kosa.backend.admin.dto.PaymentSummaryDto">
+        SELECT
+            YEAR (approved_at) AS year, MONTH (approved_at) AS month, COUNT (*) AS paymentCount, IFNULL(SUM (amount), 0) AS total_pay
+        FROM payments
+        WHERE status = 'DONE'
+        GROUP BY YEAR (approved_at), MONTH (approved_at)
+        WITH ROLLUP
+        ORDER BY YEAR (approved_at), MONTH (approved_at)
     </select>
 
 </mapper>
