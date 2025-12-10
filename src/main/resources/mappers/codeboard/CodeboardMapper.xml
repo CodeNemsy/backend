@@ -23,9 +23,15 @@
         FROM COMMENT
         WHERE BOARD_ID = C.CODEBOARD_ID
         AND BOARD_TYPE = 'CODEBOARD'
-        AND IS_DELETED = 0) AS commentCount
+        AND IS_DELETED = 0) AS commentCount,
+        (SELECT GROUP_CONCAT(CT.TAG_DISPLAY_NAME SEPARATOR ',')
+        FROM CODEBOARD_TAG CT
+        WHERE CT.CODEBOARD_ID = C.CODEBOARD_ID) AS codeboardTag,
+        CAH.AI_SCORE AS aiScore
         FROM CODEBOARD C
         INNER JOIN USERS U ON C.USER_ID = U.USER_ID
+        LEFT JOIN CODE_ANALYSIS_HISTORY CAH
+        ON C.ANALYSIS_ID COLLATE utf8mb4_unicode_ci = CAH.ANALYSIS_ID COLLATE utf8mb4_unicode_ci
         WHERE C.CODEBOARD_DELETED_YN = 'N'
         <if test="search.keyword != null and search.keyword != ''">
             AND (
