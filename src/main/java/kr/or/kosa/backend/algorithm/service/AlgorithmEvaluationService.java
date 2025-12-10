@@ -5,7 +5,8 @@ import kr.or.kosa.backend.algorithm.dto.AlgoSubmissionDto;
 import kr.or.kosa.backend.algorithm.dto.AICodeEvaluationResult;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationParams;
 import kr.or.kosa.backend.algorithm.dto.ScoreCalculationResult;
-import kr.or.kosa.backend.algorithm.dto.SubmissionAiStatusDto;
+import kr.or.kosa.backend.algorithm.dto.response.SubmissionAiStatusResponseDto;
+import kr.or.kosa.backend.algorithm.dto.response.TestRunResponseDto;
 import kr.or.kosa.backend.algorithm.dto.enums.AiFeedbackStatus;
 import kr.or.kosa.backend.algorithm.mapper.AlgorithmSubmissionMapper;
 
@@ -36,7 +37,7 @@ public class AlgorithmEvaluationService {
     public CompletableFuture<Void> processEvaluationAsync(
             Long submissionId,
             AlgoProblemDto problem,
-            Judge0Service.JudgeResultDto judgeResult
+            TestRunResponseDto judgeResult
     ) {
         log.info("🤖 AI 평가 비동기 진입점 - submissionId: {}, thread: {}",
                 submissionId, Thread.currentThread().getName());
@@ -60,7 +61,7 @@ public class AlgorithmEvaluationService {
     public void executeEvaluationWithTransaction(
             Long submissionId,
             AlgoProblemDto problem,
-            Judge0Service.JudgeResultDto judgeResult
+            TestRunResponseDto judgeResult
     ) throws Exception {
         log.info("📊 AI 평가 트랜잭션 시작 - submissionId: {}", submissionId);
 
@@ -70,14 +71,22 @@ public class AlgorithmEvaluationService {
             throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
         }
 
-        // 2. AI 평가 호출 (CompletableFuture)
+        // 2. AI 평가 호출 (고도화된 프롬프트 버전)
         log.info("🔄 AI 코드 평가 서비스 호출 중...");
+
+        // 문제 토픽 추출 (태그에서 첫 번째 항목 사용)
+        String problemTopic = extractPrimaryTopic(problem.getAlgoProblemTags());
+
         CompletableFuture<AICodeEvaluationResult> aiFuture =
                 codeEvaluationService.evaluateCode(
                         submission.getSourceCode(),
                         problem.getAlgoProblemDescription(),
                         submission.getLanguage(),
-                        judgeResult.getOverallResult()
+                        judgeResult.getOverallResult(),
+                        problemTopic,
+                        problem.getExpectedTimeComplexity(),
+                        judgeResult.getPassedCount(),
+                        judgeResult.getTotalCount()
                 );
 
         // 3. 평가 완료 대기
@@ -87,8 +96,8 @@ public class AlgorithmEvaluationService {
         // 4. 점수 계산
         ScoreCalculationParams params = ScoreCalculationParams.builder()
                 .judgeResult(judgeResult.getOverallResult())
-                .passedTestCount(judgeResult.getPassedTestCount())
-                .totalTestCount(judgeResult.getTotalTestCount())
+                .passedTestCount(judgeResult.getPassedCount())
+                .totalTestCount(judgeResult.getTotalCount())
                 .aiScore(aiResult.getAiScore())
                 .solvingTimeSeconds(submission.getSolvingDurationSeconds())
                 .timeLimitSeconds(1800)
@@ -169,13 +178,13 @@ public class AlgorithmEvaluationService {
     }
 
     @Transactional(readOnly = true)
-    public SubmissionAiStatusDto getEvaluationStatus(Long submissionId) {
+    public SubmissionAiStatusResponseDto getEvaluationStatus(Long submissionId) {
         AlgoSubmissionDto submission = submissionMapper.selectSubmissionById(submissionId);
         if (submission == null) {
             throw new IllegalArgumentException("제출 정보를 찾을 수 없습니다: " + submissionId);
         }
 
-        return SubmissionAiStatusDto.builder()
+        return SubmissionAiStatusResponseDto.builder()
                 .submissionId(submissionId)
                 .aiFeedbackStatus(
                         submission.getAiFeedbackStatus() != null
@@ -203,6 +212,19 @@ public class AlgorithmEvaluationService {
         submissionMapper.updateSubmission(submission);
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    /**
+     * 문제 태그에서 주요 토픽 추출
+     * 태그 형식: "dp,greedy,array" → 첫 번째 항목 "dp" 반환
+     */
+    private String extractPrimaryTopic(String tags) {
+        if (tags == null || tags.isBlank()) {
+            return "algorithm";
+        }
+        // 쉼표로 구분된 태그 중 첫 번째 항목 반환
+        String[] tagArray = tags.split(",");
+        return tagArray[0].trim().toLowerCase();
     }
 
 }
