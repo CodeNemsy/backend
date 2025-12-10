@@ -106,4 +106,12 @@ public interface AlgorithmProblemMapper {
          * 모든 테스트케이스 조회
          */
         List<AlgoTestcaseDto> selectTestCasesByProblemId(@Param("problemId") Long problemId);
+
+        /**
+         * 문제별 통계 조회 (제출 수, 맞힌 사람 수)
+         *
+         * @param problemId 문제 ID
+         * @return 통계 정보 (totalAttempts, successCount)
+         */
+        java.util.Map<String, Object> selectProblemStatistics(@Param("problemId") Long problemId);
 }
