@@ -5,6 +5,7 @@
 
 <mapper namespace="kr.or.kosa.backend.chatbot.mapper.ChatbotMessageMapper">
 
+    <!-- 기존 resultMap 유지 -->
     <resultMap id="ChatbotMessageMap"
                type="kr.or.kosa.backend.chatbot.domain.ChatbotMessage">
         <id     property="chatbotMessageId" column="CHATBOT_MESSAGE_ID"/>
@@ -29,6 +30,22 @@
         WHERE SESSION_ID = #{sessionId}
         ORDER BY CREATED_AT DESC
             LIMIT #{limit}
+    </select>
+
+        <select id="selectMessagesByUser" resultMap="ChatbotMessageMap">
+        SELECT *
+        FROM CHATBOT_MESSAGE
+        WHERE SESSION_ID = #{sessionId}
+          AND (USER_ID = #{userId} OR USER_ID IS NULL)
+        ORDER BY CREATED_AT ASC
+            LIMIT #{limit}
+    </select>
+
+    <select id="countUserMessages" resultType="long">
+        SELECT COUNT(*)
+        FROM CHATBOT_MESSAGE
+        WHERE SESSION_ID = #{sessionId}
+          AND USER_ID = #{userId}
     </select>
 
 </mapper>
