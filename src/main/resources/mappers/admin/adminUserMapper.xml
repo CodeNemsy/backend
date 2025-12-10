@@ -80,7 +80,7 @@
         <result column="end_date"   property="userSubscribeEnd"/>
     </resultMap>
 
-    <select id="findOneUserByUseerId" resultType="kr.or.kosa.backend.admin.dto.response.AdminUserDetailResponseDto">
+    <select id="findOneUserByUserId" resultType="kr.or.kosa.backend.admin.dto.response.AdminUserDetailResponseDto">
         SELECT
         u.USER_ID,
         u.USER_EMAIL,
