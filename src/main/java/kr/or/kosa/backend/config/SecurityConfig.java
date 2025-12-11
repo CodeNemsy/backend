@@ -45,10 +45,7 @@ public class SecurityConfig {
                                 "/",
                                 "/auth/github/**",
                                 "/oauth2/**",
-                                "/users/register",
-                                "/users/login",
-                                "/users/github/link",
-                                "/users/password/**",
+                                "/users/**",
                                 "/email/**",
                                 "/algo/**",
                                 "/admin/**",
@@ -56,7 +53,6 @@ public class SecurityConfig {
                                 "/api/analysis/**",
                                 "/api/**",           // 임시추가
                                 "/analysis/**",       // 임시추가
-                                "/api/analysis/**",
                                 "/chat/messages"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET,
