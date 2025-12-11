@@ -31,7 +31,6 @@ public class AlgorithmJudgingService {
     private final CodeExecutorService codeExecutorService;  // Judge0 또는 Piston 선택
     private final AlgorithmEvaluationService evaluationService;
     private final LanguageConstantService languageConstantService;
-
     /**
      * 통합 채점 및 평가 프로세스 (비동기)
      * - Judge0 채점 후 즉시 AI 평가 시작
