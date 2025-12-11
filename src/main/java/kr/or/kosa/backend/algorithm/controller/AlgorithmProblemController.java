@@ -235,6 +235,7 @@ public class AlgorithmProblemController {
                     completeEvent.put("description", response.getProblem().getAlgoProblemDescription());
                     completeEvent.put("difficulty", response.getProblem().getAlgoProblemDifficulty().name());
                     completeEvent.put("testCaseCount", response.getTestCases() != null ? response.getTestCases().size() : 0);
+                    completeEvent.put("generationTime", response.getGenerationTime());
                     completeEvent.put("validationResults", response.getValidationResults());
                     completeEvent.put("hasValidationCode", response.getOptimalCode() != null && !response.getOptimalCode().isBlank());
 
