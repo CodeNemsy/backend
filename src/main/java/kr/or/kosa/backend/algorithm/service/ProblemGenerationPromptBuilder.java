@@ -6,6 +6,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 알고리즘 문제 생성 프롬프트 빌더
@@ -14,6 +15,18 @@ import java.util.List;
 @Slf4j
 @Component
 public class ProblemGenerationPromptBuilder {
+
+    /**
+     * 사용 가능한 스토리 테마 목록
+     * 프론트엔드에서 선택 가능한 테마들
+     */
+    public static final Map<String, String> STORY_THEMES = Map.of(
+            "SPACE", "우주 탐사대 - 우주선, 행성, 위성 탐사 미션. 예: 탐사선이 N개의 행성을 방문하려 한다...",
+            "GAME", "게임 개발자 - RPG 게임 밸런싱, 아이템 조합, 스킬 시스템. 예: 마법사의 스킬 조합에서 최대 데미지를...",
+            "FINANCE", "금융 분석가 - 주식 거래, 투자 포트폴리오 최적화. 예: N일간의 주가 데이터에서 최대 이익을...",
+            "COOKING", "요리 대회 - 레시피 최적화, 재료 조합, 요리 점수 계산. 예: K가지 재료로 만들 수 있는 요리의...",
+            "FESTIVAL", "음악 페스티벌 - 공연 스케줄링, 무대 배치, 관객 동선. 예: N개의 밴드가 M개의 무대에서..."
+    );
 
     /**
      * 시스템 프롬프트 생성
@@ -59,6 +72,11 @@ public class ProblemGenerationPromptBuilder {
                 - **모든 문제 제목, 설명, 제약조건, 입출력 형식은 반드시 한국어로 작성하세요.**
                 - 영어로 작성하면 안 됩니다. 한국어만 사용하세요.
                 - 코드(optimalCode, naiveCode)와 tags는 예외적으로 영어 사용 가능합니다.
+
+                ## 캐릭터/인물명 규칙
+                - 문제에 등장하는 캐릭터나 인물명은 가능한 **"모아이"**를 사용하세요.
+                - 예시: "모아이는 N개의 돌을 가지고 있다", "탐험가 모아이가 섬을 탐험한다"
+                - 여러 캐릭터가 필요한 경우: 모아이, 코아이, 돌이, 석이 등 변형 사용 가능
 
                 ## 금지 사항
                 - 상표권이 있는 캐릭터/브랜드명 사용 금지 (예: 마리오, 포켓몬, 디즈니 캐릭터 등)
@@ -121,7 +139,10 @@ public class ProblemGenerationPromptBuilder {
         }
 
         if (request.getAdditionalRequirements() != null && !request.getAdditionalRequirements().isBlank()) {
-            sb.append(String.format("- 스토리 테마: %s\n", request.getAdditionalRequirements()));
+            String themeKey = request.getAdditionalRequirements().toUpperCase();
+            String themeDescription = STORY_THEMES.getOrDefault(themeKey, request.getAdditionalRequirements());
+            sb.append(String.format("- 스토리 테마: %s\n", themeDescription));
+            sb.append("  **테마에 맞는 스토리텔링을 문제 설명에 반드시 적용하세요.**\n");
         }
 
         // 3. JSON 응답 형식 (Code-First 방식: 입력만 생성, 출력은 코드 실행으로 생성)
@@ -182,7 +203,7 @@ public class ProblemGenerationPromptBuilder {
                 - Python 코드나 표현식 (join, range, for 등)을 절대 사용하지 마세요.
                 - 잘못된 예시: "input": "".join(str(x) for x in range(100))
                 - 올바른 예시: "input": "1 2 3 4 5"
-                - 큰 데이터가 필요한 경우 적당한 크기(10~100개)의 실제 데이터를 작성하세요.
+                - 큰 데이터가 필요한 경우 적당한 크���(10~100개)의 실제 데이터를 작성하세요.
                 - 실제 실행 가능한 구체적인 데이터를 사용하세요.
                 """);
 
