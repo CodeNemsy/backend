@@ -72,6 +72,9 @@ public class ProblemGenerationOrchestrator {
         log.info("문제 생성 플로우 시작 - topic: {}, difficulty: {}",
                 request.getTopic(), request.getDifficulty());
 
+        // 생성 시간 측정 시작
+        long startTime = System.currentTimeMillis();
+
         try {
             // 1. LLM으로 문제 생성 (testCases는 input만 포함)
             notifyProgress(progressCallback, "GENERATING", "LLM 문제 생성 중...", 10);
@@ -137,8 +140,12 @@ public class ProblemGenerationOrchestrator {
             Long problemId = problemService.saveGeneratedProblem(generatedProblem, userId);
             generatedProblem.setProblemId(problemId);
 
+            // 5. 생성 시간 계산 및 설정
+            double generationTime = (System.currentTimeMillis() - startTime) / 1000.0;
+            generatedProblem.setGenerationTime(generationTime);
+
             notifyProgress(progressCallback, "COMPLETED", "문제 생성 완료", 100);
-            log.info("문제 생성 완료 - problemId: {}", problemId);
+            log.info("문제 생성 완료 - problemId: {}, 소요시간: {}초", problemId, generationTime);
 
             return generatedProblem;
 
