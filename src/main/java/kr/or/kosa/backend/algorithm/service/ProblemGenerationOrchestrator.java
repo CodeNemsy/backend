@@ -12,10 +12,13 @@ import kr.or.kosa.backend.algorithm.service.validation.StructureValidator;
 import kr.or.kosa.backend.algorithm.service.validation.TimeRatioValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.document.Document;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -32,12 +35,23 @@ public class ProblemGenerationOrchestrator {
     private final ProblemGenerationPromptBuilder promptBuilder;
     private final AlgorithmProblemService problemService;
 
+    // RAG 관련 서비스
+    private final ProblemVectorStoreService vectorStoreService;
+    private final AlgorithmSynonymDictionary synonymDictionary;
+
     // 검증기들
     private final StructureValidator structureValidator;
     private final CodeExecutionValidator codeExecutionValidator;
     private final TimeRatioValidator timeRatioValidator;
     private final SimilarityChecker similarityChecker;
     private final SelfCorrectionService selfCorrectionService;
+
+    // RAG 설정
+    @Value("${algorithm.generation.rag-enabled:true}")
+    private boolean ragEnabled;
+
+    @Value("${algorithm.generation.few-shot-count:3}")
+    private int fewShotCount;
 
     /**
      * 문제 생성 전체 플로우 실행
@@ -129,19 +143,46 @@ public class ProblemGenerationOrchestrator {
     }
 
     /**
-     * LLM으로 문제 생성
+     * LLM으로 문제 생성 (RAG 기반 Few-shot 학습 포함)
      */
     private ProblemGenerationResponseDto generateWithLLM(ProblemGenerationRequestDto request) {
-        log.info("LLM 문제 생성 시작");
+        log.info("LLM 문제 생성 시작 - RAG: {}, topic: {}, difficulty: {}",
+                ragEnabled, request.getTopic(), request.getDifficulty());
 
-        // 프롬프트 생성
+        // 1. 주제 확장 (동의어 사전 활용)
+        Set<String> expandedTopics = synonymDictionary.expand(request.getTopic());
+        log.debug("주제 확장: {} → {}", request.getTopic(), expandedTopics);
+
+        // 2. RAG 기반 Few-shot 예시 검색 (활성화된 경우, 알고리즘 문제만)
+        List<Document> fewShotExamples = null;
+        if (ragEnabled && !"SQL".equalsIgnoreCase(request.getProblemType())) {
+            try {
+                String searchQuery = synonymDictionary.buildSearchQuery(
+                        request.getTopic(),
+                        request.getDifficulty().name()
+                );
+                fewShotExamples = vectorStoreService.getFewShotExamples(
+                        searchQuery,
+                        request.getDifficulty().name(),
+                        fewShotCount
+                );
+                log.info("RAG 검색 완료 - {}개 예시 문제 획득", fewShotExamples.size());
+            } catch (Exception e) {
+                log.warn("RAG 검색 실패, 지침 기반으로 진행: {}", e.getMessage());
+                fewShotExamples = null;
+            }
+        }
+
+        // 3. 프롬프트 생성 (RAG 예시 포함 여부에 따라 분기)
         String systemPrompt = promptBuilder.buildSystemPrompt();
-        String userPrompt = promptBuilder.buildUserPromptWithoutRag(request);
+        String userPrompt = (fewShotExamples != null && !fewShotExamples.isEmpty())
+                ? promptBuilder.buildUserPrompt(request, fewShotExamples)
+                : promptBuilder.buildUserPromptWithoutRag(request);
 
-        // LLM 호출
+        // 4. LLM 호출
         String response = llmChatService.generate(systemPrompt, userPrompt);
 
-        // 응답 파싱
+        // 5. 응답 파싱
         LLMResponseParser.ParsedResult parsed = llmResponseParser.parse(response, request);
 
         // ParsedResult -> ProblemGenerationResponseDto 변환
