@@ -192,4 +192,36 @@
         FROM ALGO_SUBMISSIONS
         WHERE ALGO_PROBLEM_ID = #{problemId}
     </select>
+
+    <!-- 사용자 풀이 상태 포함 문제 목록 조회 -->
+    <select id="selectProblemsWithUserStatus" resultType="map">
+        SELECT
+        p.ALGO_PROBLEM_ID as algoProblemId,
+        p.ALGO_PROBLEM_TITLE as algoProblemTitle,
+        p.ALGO_PROBLEM_DIFFICULTY as algoProblemDifficulty,
+        p.ALGO_PROBLEM_TAGS as algoProblemTags,
+        p.ALGO_PROBLEM_SOURCE as algoProblemSource,
+        p.PROBLEM_TYPE as problemType,
+        p.ALGO_CREATER as algoCreater,
+        CASE
+        WHEN #{userId} IS NOT NULL AND EXISTS (
+        SELECT 1 FROM ALGO_SUBMISSIONS s
+        WHERE s.USER_ID = #{userId}
+        AND s.ALGO_PROBLEM_ID = p.ALGO_PROBLEM_ID
+        AND s.JUDGE_RESULT = 'AC'
+        ) THEN true
+        ELSE false
+        END AS isSolved
+        FROM ALGO_PROBLEMS p
+        WHERE p.ALGO_PROBLEM_STATUS = 1
+        <if test="difficulty != null and difficulty != ''">
+            AND p.ALGO_PROBLEM_DIFFICULTY = #{difficulty}
+        </if>
+        <if test="tags != null and tags != ''">
+            AND p.ALGO_PROBLEM_TAGS LIKE CONCAT('%', #{tags}, '%')
+        </if>
+        ORDER BY p.ALGO_PROBLEM_ID ASC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
 </mapper>

@@ -161,6 +161,30 @@ public class AlgorithmProblemService {
     }
 
     /**
+     * 사용자 풀이 상태 포함 문제 목록 조회
+     */
+    public List<Map<String, Object>> getProblemsWithUserStatus(
+            Long userId, int offset, int limit, String difficulty,
+            String source, String keyword, String topic, String problemType) {
+
+        log.debug("문제 목록 조회 (풀이 상태 포함) - userId: {}, offset: {}, limit: {}", userId, offset, limit);
+
+        try {
+            // userId가 null이면 비로그인 상태 - isSolved는 모두 0
+            List<Map<String, Object>> problems = algorithmProblemMapper.selectProblemsWithUserStatus(
+                    userId, difficulty, topic, offset, limit);
+
+            log.debug("문제 목록 조회 완료 - 조회된 문제 수: {}", problems.size());
+
+            return problems;
+
+        } catch (Exception e) {
+            log.error("문제 목록 조회 실패", e);
+            throw new RuntimeException("문제 목록 조회 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    /**
      * 통계 정보 조회
      *
      * @param userId 사용자 ID (nullable)
