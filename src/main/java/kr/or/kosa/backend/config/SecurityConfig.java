@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/users/password/**",
                                 "/email/**",
                                 "/algo/**",
+                                "/algo/missions/**",
                                 "/admin/**",
                                 "/codeAnalysis/**",
                                 "/api/analysis/**",
