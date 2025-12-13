@@ -200,18 +200,24 @@ public class UserGithubSettingsService {
         // 9. 저장소 full name 추출 (URL에서)
         String repoFullName = extractRepoFullName(settings.getGithubRepoUrl());
 
-        // 10. 커밋 실행
+        // 10. 난이도 추출
+        String difficulty = problem.getAlgoProblemDifficulty() != null
+                ? problem.getAlgoProblemDifficulty().name()
+                : null;
+
+        // 11. 커밋 실행
         String commitUrl = gitHubCommitService.commitSolution(
                 accessToken,
                 repoFullName,
                 problem.getAlgoProblemId(),
                 problem.getAlgoProblemTitle(),
+                difficulty,
                 submission.getSourceCode(),
                 languageName,
                 readmeContent
         );
 
-        // 11. 커밋 URL 저장
+        // 12. 커밋 URL 저장
         if (commitUrl != null) {
             submissionMapper.updateGithubCommitUrl(submissionId, commitUrl);
         }

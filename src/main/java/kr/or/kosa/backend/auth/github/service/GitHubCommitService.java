@@ -38,6 +38,7 @@ public interface GitHubCommitService {
      * @param repoFullName 저장소 전체 이름 (owner/repo)
      * @param problemId 문제 ID
      * @param problemTitle 문제 제목
+     * @param difficulty 난이도 (폴더 구조용)
      * @param sourceCode 소스 코드
      * @param languageName 언어 이름 (파일 확장자 결정용)
      * @param readmeContent README.md 내용
@@ -48,6 +49,7 @@ public interface GitHubCommitService {
             String repoFullName,
             Long problemId,
             String problemTitle,
+            String difficulty,
             String sourceCode,
             String languageName,
             String readmeContent

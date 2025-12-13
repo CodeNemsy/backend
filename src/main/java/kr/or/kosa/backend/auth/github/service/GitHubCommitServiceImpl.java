@@ -105,13 +105,16 @@ public class GitHubCommitServiceImpl implements GitHubCommitService {
             String repoFullName,
             Long problemId,
             String problemTitle,
+            String difficulty,
             String sourceCode,
             String languageName,
             String readmeContent
     ) {
-        // 폴더명 생성: {문제번호}_{문제제목} (특수문자 제거)
+        // 폴더명 생성: {난이도}/{문제번호}_{문제제목} (특수문자 제거)
         String sanitizedTitle = sanitizeFileName(problemTitle);
-        String folderPath = problemId + "_" + sanitizedTitle;
+        String difficultyFolder = sanitizeDifficulty(difficulty);
+        String problemFolder = problemId + "_" + sanitizedTitle;
+        String folderPath = difficultyFolder + "/" + problemFolder;
 
         // 파일 확장자 결정
         String extension = getFileExtension(languageName);
@@ -127,7 +130,7 @@ public class GitHubCommitServiceImpl implements GitHubCommitService {
                     repoFullName,
                     sourcePath,
                     sourceCode,
-                    "Add solution for problem " + problemId + ": " + problemTitle
+                    "[" + difficultyFolder + "] Add solution for problem " + problemId + ": " + problemTitle
             );
 
             if (sourceResponse != null && sourceResponse.getCommit() != null) {
@@ -141,7 +144,7 @@ public class GitHubCommitServiceImpl implements GitHubCommitService {
                     repoFullName,
                     readmePath,
                     readmeContent,
-                    "Add README for problem " + problemId
+                    "[" + difficultyFolder + "] Add README for problem " + problemId
             );
 
             return commitUrl;
@@ -150,6 +153,18 @@ public class GitHubCommitServiceImpl implements GitHubCommitService {
             log.error("GitHub 커밋 실패: {}", e.getMessage());
             throw new CustomBusinessException(GithubErrorCode.GITHUB_COMMIT_FAILED);
         }
+    }
+
+    /**
+     * 난이도 문자열 정리 (폴더명용)
+     */
+    private String sanitizeDifficulty(String difficulty) {
+        if (difficulty == null || difficulty.isBlank()) {
+            return "Unrated";
+        }
+        // 첫 글자 대문자, 나머지 소문자로 정규화
+        String normalized = difficulty.trim();
+        return normalized.substring(0, 1).toUpperCase() + normalized.substring(1).toLowerCase();
     }
 
     /**
