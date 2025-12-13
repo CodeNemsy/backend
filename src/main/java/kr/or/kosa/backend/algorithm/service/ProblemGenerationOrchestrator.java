@@ -205,7 +205,7 @@ public class ProblemGenerationOrchestrator {
                 .testCases(parsed.testCases())
                 .optimalCode(parsed.optimalCode())
                 .naiveCode(parsed.naiveCode())
-                .language("Python 3")  // 기본 언어
+                .language("Python")  // 기본 언어 (LANGUAGES 테이블의 LANGUAGE_NAME과 일치)
                 .status(ProblemGenerationResponseDto.GenerationStatus.SUCCESS)
                 .build();
     }
@@ -216,7 +216,7 @@ public class ProblemGenerationOrchestrator {
     private ProblemGenerationResponseDto generateTestCaseOutputs(ProblemGenerationResponseDto problem) {
         String optimalCode = problem.getOptimalCode();
         String naiveCode = problem.getNaiveCode();
-        String language = problem.getLanguage() != null ? problem.getLanguage() : "Python 3";
+        String language = problem.getLanguage() != null ? problem.getLanguage() : "Python";
         List<AlgoTestcaseDto> testCases = problem.getTestCases();
 
         if (optimalCode == null || optimalCode.isBlank()) {
@@ -269,7 +269,7 @@ public class ProblemGenerationOrchestrator {
         List<AlgoTestcaseDto> testCases = problem.getTestCases();
         String optimalCode = problem.getOptimalCode();
         String naiveCode = problem.getNaiveCode();
-        String language = problem.getLanguage() != null ? problem.getLanguage() : "Python 3";
+        String language = problem.getLanguage() != null ? problem.getLanguage() : "Python";
 
         // 1. 구조 검증
         log.info("구조 검증 실행");
