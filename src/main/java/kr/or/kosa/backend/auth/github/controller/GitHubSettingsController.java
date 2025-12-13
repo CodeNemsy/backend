@@ -28,7 +28,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/github")
+@RequestMapping("/github")
 public class GitHubSettingsController {
 
     private final UserGithubSettingsService settingsService;
