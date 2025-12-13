@@ -64,17 +64,24 @@ CREATE TABLE `ALGO_PROBLEMS` (
     INDEX `idx_problem_type` (`PROBLEM_TYPE`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '알고리즘 문제';
 -- =============================================
--- 2. 언어별 상수 테이블 (언어 유형 추가)
+-- 2. 언어 테이블 (Judge0 ID를 PK로 사용)
 -- =============================================
-CREATE TABLE `LANGUAGE_CONSTANTS` (
-    `LANGUAGE_NAME` VARCHAR(50) PRIMARY KEY COMMENT '언어명',
+-- 변경 사유:
+-- 1. 보안 강화: FK 제약으로 유효한 언어만 제출 가능
+-- 2. 코드 단순화: Judge0 ID를 PK로 사용하여 매핑 로직 제거
+-- 3. Piston 지원: PISTON_LANGUAGE 컬럼으로 Piston API 호환
+CREATE TABLE `LANGUAGES` (
+    `LANGUAGE_ID` INT PRIMARY KEY COMMENT 'Judge0 language_id (PK)',
+    `LANGUAGE_NAME` VARCHAR(50) NOT NULL UNIQUE COMMENT '표시용 언어명',
+    `PISTON_LANGUAGE` VARCHAR(30) NULL COMMENT 'Piston API용 언어명',
     `LANGUAGE_TYPE` ENUM('GENERAL', 'DB') DEFAULT 'GENERAL' NOT NULL COMMENT '언어 유형',
     `TIME_FACTOR` DECIMAL(3, 1) DEFAULT 1.0 COMMENT '시간 제한 배수',
     `TIME_ADDITION` INT DEFAULT 0 COMMENT '시간 제한 추가(ms)',
     `MEMORY_FACTOR` DECIMAL(3, 1) DEFAULT 1.0 COMMENT '메모리 제한 배수',
     `MEMORY_ADDITION` INT DEFAULT 0 COMMENT '메모리 제한 추가(MB)',
-    INDEX `idx_language_type` (`LANGUAGE_TYPE`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '언어별 채점 상수';
+    INDEX `idx_language_type` (`LANGUAGE_TYPE`),
+    INDEX `idx_language_name` (`LANGUAGE_NAME`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '언어별 채점 상수 (Judge0 ID 기반)';
 -- =============================================
 -- 3. 알고리즘 테스트케이스 테이블
 -- =============================================
@@ -102,7 +109,7 @@ CREATE TABLE `ALGO_SUBMISSIONS` (
     `ALGO_PROBLEM_ID` BIGINT NOT NULL COMMENT '문제 고유 식별자',
     `USER_ID` BIGINT NOT NULL COMMENT '제출자 ID',
     `SOURCE_CODE` TEXT NOT NULL COMMENT '제출한 소스코드',
-    `LANGUAGE` VARCHAR(50) NOT NULL COMMENT '제출 언어',
+    `LANGUAGE_ID` INT NOT NULL COMMENT '제출 언어 ID (LANGUAGES.LANGUAGE_ID FK)',
     `EXECUTION_TIME` INT NULL COMMENT '실행 시간(ms)',
     `MEMORY_USAGE` INT NULL COMMENT '메모리 사용량(MB)',
     `PASSED_TEST_COUNT` INT DEFAULT 0 COMMENT '통과한 테스트케이스 수',
@@ -132,13 +139,15 @@ CREATE TABLE `ALGO_SUBMISSIONS` (
     -- 외래키
     FOREIGN KEY (`ALGO_PROBLEM_ID`) REFERENCES `ALGO_PROBLEMS`(`ALGO_PROBLEM_ID`) ON DELETE CASCADE,
     FOREIGN KEY (`USER_ID`) REFERENCES `USERS`(`USER_ID`) ON DELETE CASCADE,
+    FOREIGN KEY (`LANGUAGE_ID`) REFERENCES `LANGUAGES`(`LANGUAGE_ID`),
     -- 인덱스
     INDEX `idx_user_problem` (`USER_ID`, `ALGO_PROBLEM_ID`),
     INDEX `idx_final_score` (`FINAL_SCORE` DESC),
     INDEX `idx_submitted_at` (`SUBMITTED_AT` DESC),
     INDEX `idx_monitoring_session` (`MONITORING_SESSION_ID`),
     INDEX `idx_judge_result` (`JUDGE_RESULT`),
-    INDEX `idx_solve_mode` (`SOLVE_MODE`)
+    INDEX `idx_solve_mode` (`SOLVE_MODE`),
+    INDEX `idx_language_id` (`LANGUAGE_ID`)
 ) ENGINE = InnoDB AUTO_INCREMENT = 1000 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '알고리즘 제출 기록';
 -- =============================================
 -- 5. 모니터링 세션 테이블 (집중 모드 전용)
@@ -222,40 +231,22 @@ ALTER TABLE `ALGO_TESTCASES` AUTO_INCREMENT = 1;
 ALTER TABLE `ALGO_SUBMISSIONS` AUTO_INCREMENT = 1000;
 ALTER TABLE `GITHUB_COMMITS` AUTO_INCREMENT = 1;
 -- =============================================
--- 언어별 상수 데이터 삽입 (제공된 표 반영 + LANGUAGE_TYPE)
+-- 언어 데이터 삽입 (Judge0 ID 기반 + Piston 지원)
 -- =============================================
-INSERT INTO LANGUAGE_CONSTANTS (LANGUAGE_NAME, LANGUAGE_TYPE, TIME_FACTOR, TIME_ADDITION, MEMORY_FACTOR, MEMORY_ADDITION) VALUES
-('C++17', 'GENERAL', 1.0, 0, 1.0, 0), ('C11', 'GENERAL', 1.0, 0, 1.0, 0), ('C99', 'GENERAL', 1.0, 0, 1.0, 0), ('C++98', 'GENERAL', 1.0, 0, 1.0, 0),
-('C++11', 'GENERAL', 1.0, 0, 1.0, 0), ('C++14', 'GENERAL', 1.0, 0, 1.0, 0), ('C++20', 'GENERAL', 1.0, 0, 1.0, 0), ('C++23', 'GENERAL', 1.0, 0, 1.0, 0),
-('C++26', 'GENERAL', 1.0, 0, 1.0, 0), ('C (Clang)', 'GENERAL', 1.0, 0, 1.0, 0), ('C++ (Clang)', 'GENERAL', 1.0, 0, 1.0, 0), ('C17', 'GENERAL', 1.0, 0, 1.0, 0),
-('C23', 'GENERAL', 1.0, 0, 1.0, 0), ('C90', 'GENERAL', 1.0, 0, 1.0, 0), ('C2x', 'GENERAL', 1.0, 0, 1.0, 0), ('C90 (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-('C2x (Clang)', 'GENERAL', 1.0, 0, 1.0, 0),
-('Java 8', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 8 (OpenJDK)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 11', 'GENERAL', 2.0, 1000, 2.0, 16),
-('Java 15', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java (JDK 17)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java (JDK 21)', 'GENERAL', 2.0, 1000, 2.0, 16),
-('Java 17', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 21', 'GENERAL', 2.0, 1000, 2.0, 16), ('Java 19', 'GENERAL', 2.0, 1000, 2.0, 16),
-('Python 3', 'GENERAL', 3.0, 2000, 2.0, 32), ('PyPy3', 'GENERAL', 3.0, 2000, 2.0, 128), ('Python 2', 'GENERAL', 3.0, 2000, 2.0, 32),
-('PyPy2', 'GENERAL', 3.0, 2000, 2.0, 128),
-('Ruby', 'GENERAL', 2.0, 1000, 1.0, 512), ('Kotlin (JVM)', 'GENERAL', 2.0, 1000, 2.0, 16), ('Kotlin (Native)', 'GENERAL', 1.0, 0, 1.0, 16),
-('Swift', 'GENERAL', 1.0, 0, 1.0, 512), ('Swift (Apple)', 'GENERAL', 1.0, 0, 1.0, 512), ('Text', 'GENERAL', 1.0, 0, 1.0, 0),
-('C#', 'GENERAL', 2.0, 1000, 2.0, 16), ('node.js', 'GENERAL', 3.0, 2000, 2.0, 2), ('Go', 'GENERAL', 1.0, 2000, 1.0, 512),
-('Go (gccgo)', 'GENERAL', 1.0, 0, 1.0, 0), ('D', 'GENERAL', 1.0, 0, 1.0, 16), ('D (LDC)', 'GENERAL', 1.0, 0, 1.0, 16),
-('F# (Mono)', 'GENERAL', 3.0, 2000, 2.0, 32), ('Pascal', 'GENERAL', 1.0, 0, 1.0, 64), ('Haskell', 'GENERAL', 2.0, 1000, 1.0, 16),
-('Rust 2018', 'GENERAL', 1.0, 0, 1.0, 0), ('Rust 2021', 'GENERAL', 1.0, 0, 1.0, 0), ('Rust', 'GENERAL', 1.0, 0, 1.0, 0),
-('Lua', 'GENERAL', 1.0, 2000, 1.0, 64), ('Perl', 'GENERAL', 3.0, 2000, 2.0, 16), ('PHP', 'GENERAL', 3.0, 2000, 2.0, 16),
-('Clojure', 'GENERAL', 2.0, 1000, 2.0, 16), ('Fortran', 'GENERAL', 1.0, 0, 1.0, 0), ('Scheme (Chicken)', 'GENERAL', 3.0, 2000, 2.0, 32),
-('Scheme (Racket)', 'GENERAL', 3.0, 2000, 2.0, 16), ('Assembly (32bit)', 'GENERAL', 1.0, 0, 1.0, 0), ('Assembly (64bit)', 'GENERAL', 1.0, 0, 1.0, 0),
-('Objective-C', 'GENERAL', 1.0, 0, 1.0, 0), ('Objective-C++', 'GENERAL', 1.0, 0, 1.0, 0), ('아희 (Aheui)', 'GENERAL', 1.0, 2000, 1.0, 64),
-('아희 (Aheui) (Bok-sil)', 'GENERAL', 1.0, 2000, 1.0, 64), ('아희 (Aheui) (C)', 'GENERAL', 1.0, 1000, 1.0, 0), ('Golfscript', 'GENERAL', 1.0, 2000, 1.0, 64),
-('Brainf**k', 'GENERAL', 1.0, 1000, 1.0, 0), ('Whitespace', 'GENERAL', 1.0, 0, 1.0, 0), ('Tcl', 'GENERAL', 1.0, 2000, 1.0, 512),
-('Rhino', 'GENERAL', 2.0, 1000, 2.0, 16), ('Cobol', 'GENERAL', 1.0, 0, 1.0, 0), ('Pike', 'GENERAL', 3.0, 2000, 2.0, 16),
-('Sed', 'GENERAL', 1.0, 2000, 1.0, 64), ('Bash', 'GENERAL', 1.0, 2000, 1.0, 64), ('Ada', 'GENERAL', 1.0, 0, 1.0, 0),
-('AWK', 'GENERAL', 1.0, 2000, 1.0, 64), ('OCaml', 'GENERAL', 1.0, 0, 1.0, 64), ('Perl 6', 'GENERAL', 3.0, 2000, 2.0, 16),
-('Vim', 'GENERAL', 1.0, 2000, 1.0, 64), ('Haxe', 'GENERAL', 2.0, 1000, 2.0, 16), ('Nim', 'GENERAL', 1.0, 0, 1.0, 16),
-('Algol 68', 'GENERAL', 1.0, 0, 1.0, 0), ('Befunge', 'GENERAL', 1.0, 0, 1.0, 32), ('Ceylon', 'GENERAL', 2.0, 1000, 2.0, 16),
-('Pony', 'GENERAL', 1.0, 0, 1.0, 0), ('Nemerle', 'GENERAL', 1.0, 5000, 1.0, 512), ('Cobra', 'GENERAL', 2.0, 1000, 2.0, 16),
-('Nimrod', 'GENERAL', 1.0, 0, 1.0, 0), ('Pascal (FPC)', 'GENERAL', 1.0, 0, 1.0, 64), ('TypeScript', 'GENERAL', 3.0, 2000, 2.0, 2),
-('Visual Basic', 'GENERAL', 2.0, 1000, 2.0, 16), ('MonoDevelop C#', 'GENERAL', 2.0, 1000, 2.0, 16), ('F# (.NET)', 'GENERAL', 2.0, 1000, 2.0, 16),
-('MySQL', 'DB', 1.0, 0, 1.0, 0), ('PostgreSQL', 'DB', 1.0, 0, 1.0, 0), ('SQLite', 'DB', 1.0, 0, 1.0, 0);
+-- LANGUAGE_ID = Judge0 API language_id
+-- PISTON_LANGUAGE = Piston API용 언어명
+INSERT INTO LANGUAGES (LANGUAGE_ID, LANGUAGE_NAME, PISTON_LANGUAGE, LANGUAGE_TYPE, TIME_FACTOR, TIME_ADDITION, MEMORY_FACTOR, MEMORY_ADDITION) VALUES
+(100, 'Python', 'python', 'GENERAL', 3.0, 2000, 2.0, 32),
+(93, 'JavaScript', 'javascript', 'GENERAL', 3.0, 2000, 2.0, 2),
+(91, 'Java', 'java', 'GENERAL', 2.0, 1000, 2.0, 16),
+(51, 'C#', 'csharp.net', 'GENERAL', 2.0, 1000, 2.0, 16),
+(105, 'C++', 'c++', 'GENERAL', 1.0, 0, 1.0, 0),
+(106, 'Go', 'go', 'GENERAL', 1.0, 2000, 1.0, 512),
+(94, 'TypeScript', 'typescript', 'GENERAL', 3.0, 2000, 2.0, 2),
+(111, 'Kotlin', 'kotlin', 'GENERAL', 2.0, 1000, 2.0, 16),
+(83, 'Swift', 'swift', 'GENERAL', 1.0, 0, 1.0, 512),
+(108, 'Rust', 'rust', 'GENERAL', 1.0, 0, 1.0, 0),
+(82, 'SQLite', 'sqlite3', 'DB', 1.0, 0, 1.0, 0);
 -- =============================================
 -- 샘플 데이터 삽입 (문제)
 -- =============================================
